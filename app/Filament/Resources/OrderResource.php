@@ -176,7 +176,7 @@ class OrderResource extends Resource
                                                     ->tel(),
                                             ]),
 
-                                        Forms\Components\Fieldset::make('Адрес оплаты')
+                                        Forms\Components\Section::make('Адрес оплаты')
                                             ->schema([
                                                 Forms\Components\TextInput::make('billing_address.first_name')
                                                     ->label('Имя'),
