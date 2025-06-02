@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     librabbitmq-dev \
     librabbitmq4 \
-    && docker-php-ext-install pdo_mysql zip bcmath sockets \
+    libicu-dev \
+    && docker-php-ext-install pdo_mysql zip bcmath sockets intl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
