@@ -20,7 +20,7 @@ class ClientFactory extends Factory
             'first_name' => $this->faker->firstName,
             'last_name' => $this->faker->lastName,
             'email' => $this->faker->unique()->safeEmail,
-            'phone' => $this->faker->phoneNumber,
+            'phone' => $this->generateRussianPhone(),
             'date_of_birth' => $this->faker->dateTimeBetween('-20 years', '-10 years'),
             'gender' => $this->faker->optional()->randomElement(['male', 'female']),
             'addresses' => [
@@ -35,13 +35,26 @@ class ClientFactory extends Factory
                     'state' => $this->faker->state, // область
                     'postal_code' => $this->faker->postcode, // почтовый индекс
                     'country' => 'Russia', // страна
-                    'phone' => $this->faker->phoneNumber, // телефон
+                    'phone' => $this->generateRussianPhone(), // телефон
                 ],
             ],
             'accepts_marketing' => $this->faker->boolean(60), // согласие на получение маркетинговых материалов
             'email_verified_at' => $this->faker->optional(0.8)->dateTimeBetween('-1 year', 'now'), // подтверждение email
             'is_active' => $this->faker->boolean(95), // активный клиент
         ];
+    }
+
+    /**
+     * Генерация российского номера телефона
+     */
+    private function generateRussianPhone(): string
+    {
+        // Генерируем номер в формате 8XXXXXXXXXX
+        // Российские мобильные коды: 900-999
+        $mobileCode = $this->faker->numberBetween(900, 999);
+        $number = $this->faker->numerify('#######');
+
+        return "8{$mobileCode}{$number}";
     }
 
     /**
@@ -91,7 +104,7 @@ class ClientFactory extends Factory
                     'state' => $this->faker->state,
                     'postal_code' => $this->faker->postcode,
                     'country' => 'Russia',
-                    'phone' => $this->faker->phoneNumber,
+                    'phone' => $this->generateRussianPhone(),
                 ],
                 [
                     'type' => 'billing',
@@ -104,7 +117,7 @@ class ClientFactory extends Factory
                     'state' => $this->faker->state,
                     'postal_code' => $this->faker->postcode,
                     'country' => 'Russia',
-                    'phone' => $this->faker->phoneNumber,
+                    'phone' => $this->generateRussianPhone(),
                 ],
             ],
         ]);
