@@ -19,7 +19,7 @@ class OrderItemFactory extends Factory
     public function definition(): array
     {
         $quantity = $this->faker->numberBetween(1, 5);
-        $productPrice = $this->faker->numberBetween(10, 1000);
+        $productPrice = $this->faker->numberBetween(100, 10000); // цена в рублях (int)
         $totalPrice = $quantity * $productPrice;
 
         return [
@@ -28,8 +28,8 @@ class OrderItemFactory extends Factory
             'product_name' => $this->faker->words(3, true), // название товара
             'product_sku' => $this->faker->numerify('SKU-######'), // артикул товара
             'quantity' => $quantity, // количество товара
-            'product_price' => $productPrice, // цена товара
-            'total_price' => $totalPrice, // сумма товара
+            'product_price' => $productPrice, // цена товара в рублях
+            'total_price' => $totalPrice, // сумма товара в рублях
             'product_variant' => [
                 'size' => $this->faker->randomElement(['S', 'M', 'L', 'XL']),
                 'color' => $this->faker->colorName,

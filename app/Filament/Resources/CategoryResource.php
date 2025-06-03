@@ -4,7 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CategoryResource\Pages;
 use App\Filament\Resources\CategoryResource\RelationManagers;
+use App\Filament\Resources\ProductResource;
 use App\Models\Category;
+use App\Contracts\Repositories\CategoryRepositoryInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +15,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
+use Filament\Notifications\Notification;
 
 class CategoryResource extends Resource
 {
@@ -158,6 +161,18 @@ class CategoryResource extends Resource
                     ->boolean()
                     ->trueLabel('Только активные')
                     ->falseLabel('Только неактивные')
+                    ->query(function (Builder $query, array $data): Builder {
+                        if ($data['value'] === true) {
+                            $categoryRepository = app(CategoryRepositoryInterface::class);
+                            $categoryIds = $categoryRepository->getActive()->pluck('id');
+                            return $query->whereIn('id', $categoryIds);
+                        } elseif ($data['value'] === false) {
+                            $categoryRepository = app(CategoryRepositoryInterface::class);
+                            $activeIds = $categoryRepository->getActive()->pluck('id');
+                            return $query->whereNotIn('id', $activeIds);
+                        }
+                        return $query;
+                    })
                     ->native(false),
 
                 Tables\Filters\SelectFilter::make('parent_id')
@@ -165,17 +180,83 @@ class CategoryResource extends Resource
                     ->relationship('parent', 'name')
                     ->searchable()
                     ->preload(),
+
+                Tables\Filters\Filter::make('root_categories')
+                    ->label('Корневые категории')
+                    ->query(function (Builder $query): Builder {
+                        $categoryRepository = app(CategoryRepositoryInterface::class);
+                        $rootIds = $categoryRepository->getRoot()->pluck('id');
+                        return $query->whereIn('id', $rootIds);
+                    }),
+
+                Tables\Filters\Filter::make('with_products')
+                    ->label('С товарами')
+                    ->query(function (Builder $query): Builder {
+                        $categoryRepository = app(CategoryRepositoryInterface::class);
+                        $categoriesWithProducts = $categoryRepository->getWithProductsCount()->filter(function($category) {
+                            return $category->products_count > 0;
+                        });
+                        $categoryIds = $categoriesWithProducts->pluck('id');
+                        return $query->whereIn('id', $categoryIds);
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Просмотр'),
+
                 Tables\Actions\EditAction::make()
                     ->label('Редактировать'),
+
+                Tables\Actions\Action::make('viewProducts')
+                    ->label('Товары категории')
+                    ->icon('heroicon-o-cube')
+                    ->color('info')
+                    ->url(fn (Category $record): string => ProductResource::getUrl('index', ['tableFilters' => ['category_id' => ['value' => $record->id]]])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Удалить'),
+
+                    Tables\Actions\BulkAction::make('activateCategories')
+                        ->label('Активировать категории')
+                        ->icon('heroicon-o-check')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $categoryRepository = app(CategoryRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                $categoryRepository->update($record->id, ['is_active' => true]);
+                                $count++;
+                            }
+
+                            Notification::make()
+                                ->title("Активировано категорий: {$count}")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\BulkAction::make('deactivateCategories')
+                        ->label('Деактивировать категории')
+                        ->icon('heroicon-o-x-mark')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $categoryRepository = app(CategoryRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                $categoryRepository->update($record->id, ['is_active' => false]);
+                                $count++;
+                            }
+
+                            Notification::make()
+                                ->title("Деактивировано категорий: {$count}")
+                                ->success()
+                                ->send();
+                        }),
                 ]),
             ])
             ->defaultSort('sort_order');

@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
 
 class Category extends Model
 {
@@ -59,31 +58,15 @@ class Category extends Model
         return $this->hasMany(Product::class);
     }
 
-    /**
-     * Только активные категории
-     */
-    public function scopeActive(Builder $query): Builder
-    {
-        return $query->where('is_active', true);
-    }
+    // /**
+    //  * Получить полное название категории с родительской категорией
+    //  */
+    // public function getFullNameAttribute(): string
+    // {
+    //     if ($this->parent) {
+    //         return $this->parent->name . ' → ' . $this->name;
+    //     }
 
-    /**
-     * Только корневые категории (без родителя)
-     */
-    public function scopeRoot(Builder $query): Builder
-    {
-        return $query->whereNull('parent_id');
-    }
-
-    /**
-     * Получить полное название категории с родительской категорией
-     */
-    public function getFullNameAttribute(): string
-    {
-        if ($this->parent) {
-            return $this->parent->name . ' → ' . $this->name;
-        }
-
-        return $this->name;
-    }
+    //     return $this->name;
+    // }
 }

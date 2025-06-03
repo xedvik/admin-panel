@@ -17,10 +17,10 @@ class OrderFactory extends Factory
      */
     public function definition(): array
     {
-        $subtotal = $this->faker->numberBetween(2, 5000); // сумма заказа без скидок и доставки
-        $taxAmount = $subtotal * 0.2; // 20% налог
-        $shippingAmount = $this->faker->numberBetween(0, 500); // сумма доставки
-        $discountAmount = $this->faker->boolean(30) ? $this->faker->numberBetween(0, $subtotal * 0.2) : 0; // сумма скидки
+        $subtotal = $this->faker->numberBetween(200, 50000); // сумма заказа без скидок и доставки в рублях
+        $taxAmount = (int)($subtotal * 0.2); // 20% налог
+        $shippingAmount = $this->faker->numberBetween(0, 5000); // сумма доставки в рублях
+        $discountAmount = $this->faker->boolean(30) ? $this->faker->numberBetween(0, (int)($subtotal * 0.2)) : 0; // сумма скидки
         $totalAmount = $subtotal + $taxAmount + $shippingAmount - $discountAmount; // сумма заказа
 
         return [

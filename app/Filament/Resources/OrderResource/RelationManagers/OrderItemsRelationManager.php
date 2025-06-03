@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\OrderResource\RelationManagers;
 
 use App\Models\Product;
+use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\OrderItemRepositoryInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -27,19 +29,27 @@ class OrderItemsRelationManager extends RelationManager
             ->schema([
                 Forms\Components\Select::make('product_id')
                     ->label('Товар')
-                    ->relationship('product', 'name')
-                    ->getOptionLabelFromRecordUsing(fn (Product $record) => "{$record->name} ({$record->sku}) - {$record->price}₽")
-                    ->searchable(['name', 'sku'])
+                    ->options(function () {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        return $productRepository->getActive()
+                            ->pluck('name', 'id')
+                            ->map(function ($name, $id) use ($productRepository) {
+                                $product = $productRepository->find($id);
+                                return "{$product->name} ({$product->sku}) - {$product->price}₽";
+                            });
+                    })
+                    ->searchable()
                     ->preload()
                     ->required()
                     ->live(onBlur: true)
                     ->afterStateUpdated(function (Forms\Set $set, $state) {
                         if ($state) {
-                            $product = Product::find($state);
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $product = $productRepository->find($state);
                             if ($product) {
                                 $set('product_name', $product->name);
                                 $set('product_sku', $product->sku);
-                                $set('price', $product->price);
+                                $set('product_price', $product->price);
                                 $set('total_price', $product->price);
                             }
                         }
@@ -68,11 +78,11 @@ class OrderItemsRelationManager extends RelationManager
                             ->minValue(1)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, $state) {
-                                $price = $get('price') ?? 0;
+                                $price = $get('product_price') ?? 0;
                                 $set('total_price', $price * ($state ?? 1));
                             }),
 
-                        Forms\Components\TextInput::make('price')
+                        Forms\Components\TextInput::make('product_price')
                             ->label('Цена за единицу')
                             ->numeric()
                             ->required()
@@ -109,12 +119,15 @@ class OrderItemsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('product_name')
             ->columns([
-                Tables\Columns\ImageColumn::make('product.images')
+                Tables\Columns\ImageColumn::make('product_image')
                     ->label('Фото')
+                    ->getStateUsing(function ($record) {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        $product = $productRepository->find($record->product_id);
+                        return $product ? $productRepository->getMainImage($product) : null;
+                    })
                     ->circular()
-                    ->stacked()
-                    ->limit(3)
-                    ->limitedRemainingText(),
+                    ->size(50),
 
                 Tables\Columns\TextColumn::make('product_name')
                     ->label('Товар')
@@ -128,7 +141,7 @@ class OrderItemsRelationManager extends RelationManager
                     ->badge()
                     ->color('info'),
 
-                Tables\Columns\TextColumn::make('price')
+                Tables\Columns\TextColumn::make('product_price')
                     ->label('Цена')
                     ->money('RUB')
                     ->sortable(),
@@ -160,7 +173,10 @@ class OrderItemsRelationManager extends RelationManager
             ->filters([
                 Tables\Filters\SelectFilter::make('product_id')
                     ->label('Товар')
-                    ->relationship('product', 'name')
+                    ->options(function () {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        return $productRepository->getActive()->pluck('name', 'id');
+                    })
                     ->searchable()
                     ->preload(),
             ])

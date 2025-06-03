@@ -14,6 +14,8 @@ class ProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $productRepository = app(\App\Contracts\Repositories\ProductRepositoryInterface::class);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -25,7 +27,7 @@ class ProductResource extends JsonResource
             // Цены и скидки
             'price' => (int) $this->price,
             'compare_price' => $this->compare_price ? (int) $this->compare_price : null,
-            'discount_percentage' => $this->discount_percentage,
+            'discount_percentage' => $productRepository->calculateDiscountPercent($this->resource),
             'price_formatted' => '₽' . number_format($this->price, 0, ',', ' '),
             'has_discount' => $this->compare_price && $this->compare_price > $this->price,
 
@@ -33,8 +35,8 @@ class ProductResource extends JsonResource
             'stock_quantity' => (int) $this->stock_quantity,
             'track_quantity' => $this->track_quantity,
             'continue_selling_when_out_of_stock' => $this->continue_selling_when_out_of_stock,
-            'stock_status' => $this->stock_status,
-            'in_stock' => $this->in_stock,
+            'stock_status' => $productRepository->getStockStatus($this->resource),
+            'in_stock' => $productRepository->checkInStock($this->resource),
 
             // Характеристики
             'weight' => $this->weight ? (float) $this->weight : null,
@@ -45,7 +47,8 @@ class ProductResource extends JsonResource
             'images' => $this->images ? collect($this->images)->map(function ($image) {
                 return asset('storage/' . $image);
             })->toArray() : [],
-            'main_image' => $this->main_image ? asset('storage/' . $this->main_image) : null,
+            'main_image' => $productRepository->getMainImage($this->resource) ?
+                asset('storage/' . $productRepository->getMainImage($this->resource)) : null,
 
             // Статус
             'is_active' => $this->is_active,

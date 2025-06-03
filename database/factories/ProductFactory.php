@@ -19,8 +19,8 @@ class ProductFactory extends Factory
     public function definition(): array
     {
         $name = $this->faker->words(3, true);
-        $price = $this->faker->randomFloat(2, 10, 1000);
-        $comparePrice = $this->faker->boolean(30) ? $this->faker->randomFloat(2, $price + 10, $price * 1.5) : null;
+        $price = $this->faker->numberBetween(100, 100000); // цена в рублях (int)
+        $comparePrice = $this->faker->boolean(30) ? $this->faker->numberBetween($price + 100, (int)($price * 1.5)) : null;
 
         return [
             'name' => $name, // название товара
@@ -28,8 +28,8 @@ class ProductFactory extends Factory
             'description' => $this->faker->paragraph, // описание товара
             'short_description' => $this->faker->sentence, // краткое описание товара
             'sku' => $this->faker->unique()->numerify('SKU-######'), // артикул товара
-            'price' => $price, // цена товара
-            'compare_price' => $comparePrice, // цена до скдики (зачеркнутая цена)
+            'price' => $price, // цена товара в рублях
+            'compare_price' => $comparePrice, // цена до скидки в рублях
             'stock_quantity' => $this->faker->numberBetween(0, 100), // количество товара на складе
             'track_quantity' => $this->faker->boolean(80), // отслеживать количество товара на складе
             'continue_selling_when_out_of_stock' => $this->faker->boolean(20), // продолжать продавать товар когда на складе нет

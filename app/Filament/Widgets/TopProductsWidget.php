@@ -2,9 +2,8 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\OrderItem;
+use App\Contracts\Repositories\ProductRepositoryInterface;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
 
 class TopProductsWidget extends ChartWidget
 {
@@ -16,14 +15,11 @@ class TopProductsWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $topProducts = OrderItem::select('product_name', DB::raw('SUM(quantity) as total_sold'))
-            ->groupBy('product_name')
-            ->orderBy('total_sold', 'desc')
-            ->limit(5)
-            ->get();
+        $productRepository = app(ProductRepositoryInterface::class);
+        $topProducts = $productRepository->getPopularProducts(5);
 
-        $labels = $topProducts->pluck('product_name')->toArray();
-        $data = $topProducts->pluck('total_sold')->toArray();
+        $labels = $topProducts->pluck('name')->toArray();
+        $data = $topProducts->pluck('order_items_count')->toArray();
 
         return [
             'datasets' => [

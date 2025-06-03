@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ClientResource\RelationManagers;
 
 use App\Models\Order;
+use App\Contracts\Repositories\OrderRepositoryInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -34,7 +35,7 @@ class OrdersRelationManager extends RelationManager
                                     ->required()
                                     ->maxLength(255)
                                     ->default(fn () => 'ORD-' . str_pad(random_int(1, 999999), 6, '0', STR_PAD_LEFT))
-                                    ->unique(Order::class, 'order_number', ignoreRecord: true),
+                                    ->unique('orders', 'order_number', ignoreRecord: true),
 
                                 Forms\Components\Select::make('status')
                                     ->label('Статус заказа')

@@ -50,23 +50,5 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * Вычислить и обновить общую стоимость
-     */
-    public function calculateTotalPrice(): void
-    {
-        $this->total_price = $this->quantity * $this->product_price;
-    }
 
-    /**
-     * Автоматически вычислять общую стоимость при сохранении
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::saving(function ($orderItem) {
-            $orderItem->calculateTotalPrice();
-        });
-    }
 }

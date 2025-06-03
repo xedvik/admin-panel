@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
 
 class Order extends Model
 {
@@ -66,107 +65,30 @@ class Order extends Model
     }
 
     /**
-     * Заказы по статусу
+     * Получить статус заказа в читаемом виде
      */
-    public function scopeStatus(Builder $query, string $status): Builder
+    public function getStatusLabelAttribute(): string
     {
-        return $query->where('status', $status);
+        return app(\App\Contracts\Repositories\OrderRepositoryInterface::class)
+            ->getOrderStatusLabel($this->id);
     }
 
     /**
-     * Заказы по статусу оплаты
+     * Получить статус оплаты в читаемом виде
      */
-    public function scopePaymentStatus(Builder $query, string $paymentStatus): Builder
+    public function getPaymentStatusLabelAttribute(): string
     {
-        return $query->where('payment_status', $paymentStatus);
+        return app(\App\Contracts\Repositories\OrderRepositoryInterface::class)
+            ->getOrderPaymentStatusLabel($this->id);
     }
 
     /**
-     * Заказы в ожидании
+     * Получить цвет для статуса заказа
      */
-    public function scopePending(Builder $query): Builder
+    public function getStatusColorAttribute(): string
     {
-        return $query->where('status', 'pending');
-    }
-
-    /**
-     * Заказы в обработке
-     */
-    public function scopeProcessing(Builder $query): Builder
-    {
-        return $query->where('status', 'processing');
-    }
-
-    /**
-     * Отправленные заказы
-     */
-    public function scopeShipped(Builder $query): Builder
-    {
-        return $query->where('status', 'shipped');
-    }
-
-    /**
-     * Доставленные заказы
-     */
-    public function scopeDelivered(Builder $query): Builder
-    {
-        return $query->where('status', 'delivered');
-    }
-
-    /**
-     * Отмененные заказы
-     */
-    public function scopeCancelled(Builder $query): Builder
-    {
-        return $query->where('status', 'cancelled');
-    }
-
-    /**
-     * Оплаченные заказы
-     */
-    public function scopePaid(Builder $query): Builder
-    {
-        return $query->where('payment_status', 'paid');
-    }
-
-    /**
-     * Поиск по номеру заказа
-     */
-    public function scopeSearch(Builder $query, string $search): Builder
-    {
-        return $query->where('order_number', 'like', "%{$search}%");
-    }
-
-    /**
-     * Проверить можно ли отменить заказ
-     */
-    public function canBeCancelled(): bool
-    {
-        return in_array($this->status, ['pending', 'processing']);
-    }
-
-    /**
-     * Проверить отправлен ли заказ
-     */
-    public function isShipped(): bool
-    {
-        return $this->status === 'shipped' && !is_null($this->shipped_at);
-    }
-
-    /**
-     * Проверить доставлен ли заказ
-     */
-    public function isDelivered(): bool
-    {
-        return $this->status === 'delivered' && !is_null($this->delivered_at);
-    }
-
-    /**
-     * Проверить оплачен ли заказ
-     */
-    public function isPaid(): bool
-    {
-        return $this->payment_status === 'paid';
+        return app(\App\Contracts\Repositories\OrderRepositoryInterface::class)
+            ->getOrderStatusColor($this->id);
     }
 
     /**
@@ -174,70 +96,8 @@ class Order extends Model
      */
     public function getTotalItemsAttribute(): int
     {
-        return $this->orderItems()->sum('quantity');
+        return app(\App\Contracts\Repositories\OrderRepositoryInterface::class)
+            ->getOrderTotalItems($this->id);
     }
 
-    /**
-     * Получить русское название статуса
-     */
-    public function getStatusLabelAttribute(): string
-    {
-        return match ($this->status) {
-            'pending' => 'В ожидании',
-            'processing' => 'В обработке',
-            'shipped' => 'Отправлен',
-            'delivered' => 'Доставлен',
-            'cancelled' => 'Отменен',
-            default => 'Неизвестно',
-        };
-    }
-
-    /**
-     * Получить русское название статуса оплаты
-     */
-    public function getPaymentStatusLabelAttribute(): string
-    {
-        return match ($this->payment_status) {
-            'pending' => 'Ожидает оплаты',
-            'paid' => 'Оплачен',
-            'failed' => 'Ошибка оплаты',
-            'refunded' => 'Возврат',
-            default => 'Неизвестно',
-        };
-    }
-
-    /**
-     * Получить CSS класс для статуса
-     */
-    public function getStatusColorAttribute(): string
-    {
-        return match ($this->status) {
-            'pending' => 'warning',
-            'processing' => 'info',
-            'shipped' => 'primary',
-            'delivered' => 'success',
-            'cancelled' => 'danger',
-            default => 'secondary',
-        };
-    }
-
-    /**
-     * Получить полный адрес доставки как строку
-     */
-    public function getShippingAddressStringAttribute(): string
-    {
-        if (empty($this->shipping_address)) {
-            return '';
-        }
-
-        $address = $this->shipping_address;
-        $parts = [];
-
-        if (!empty($address['street'])) $parts[] = $address['street'];
-        if (!empty($address['city'])) $parts[] = $address['city'];
-        if (!empty($address['state'])) $parts[] = $address['state'];
-        if (!empty($address['postal_code'])) $parts[] = $address['postal_code'];
-
-        return implode(', ', $parts);
-    }
 }

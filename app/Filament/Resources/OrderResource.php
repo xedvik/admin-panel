@@ -6,6 +6,7 @@ use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource\RelationManagers;
 use App\Models\Order;
 use App\Models\Client;
+use App\Contracts\Repositories\OrderRepositoryInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Notifications\Notification;
 
 class OrderResource extends Resource
 {
@@ -41,7 +43,7 @@ class OrderResource extends Resource
                                     ->required()
                                     ->maxLength(255)
                                     ->default(fn () => 'ORD-' . str_pad(random_int(1, 999999), 6, '0', STR_PAD_LEFT))
-                                    ->unique(Order::class, 'order_number', ignoreRecord: true),
+                                    ->unique('orders', 'order_number', ignoreRecord: true),
 
                                 Forms\Components\Select::make('client_id')
                                     ->label('Клиент')
@@ -208,6 +210,7 @@ class OrderResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['client', 'orderItems']))
             ->columns([
                 Tables\Columns\TextColumn::make('order_number')
                     ->label('№ заказа')
@@ -216,20 +219,35 @@ class OrderResource extends Resource
                     ->copyable()
                     ->weight('bold'),
 
-                Tables\Columns\TextColumn::make('client.full_name')
+                Tables\Columns\TextColumn::make('client_name')
                     ->label('Клиент')
                     ->searchable(['client.first_name', 'client.last_name'])
                     ->sortable()
+                    ->getStateUsing(function (Order $record): string {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        return $orderRepository->getOrderClientName($record->id);
+                    })
                     ->description(fn (Order $record): string => $record->client->email ?? ''),
 
                 Tables\Columns\TextColumn::make('status_label')
                     ->label('Статус')
                     ->badge()
-                    ->color(fn (Order $record): string => $record->status_color),
+                    ->getStateUsing(function (Order $record): string {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        return $orderRepository->getOrderStatusLabel($record->id);
+                    })
+                    ->color(function (Order $record): string {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        return $orderRepository->getOrderStatusColor($record->id);
+                    }),
 
                 Tables\Columns\TextColumn::make('payment_status_label')
                     ->label('Оплата')
                     ->badge()
+                    ->getStateUsing(function (Order $record): string {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        return $orderRepository->getOrderPaymentStatusLabel($record->id);
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'Оплачен' => 'success',
                         'Ожидает оплаты' => 'warning',
@@ -241,13 +259,18 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('total_items')
                     ->label('Товаров')
                     ->badge()
-                    ->color('info'),
+                    ->color('info')
+                    ->getStateUsing(function (Order $record): int {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        return $orderRepository->getOrderTotalItems($record->id);
+                    }),
 
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Сумма')
                     ->money('RUB')
                     ->sortable()
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->getStateUsing(fn (Order $record): int => $record->total_amount),
 
                 Tables\Columns\TextColumn::make('payment_method')
                     ->label('Способ оплаты')
@@ -282,6 +305,14 @@ class OrderResource extends Resource
                         'delivered' => 'Доставлен',
                         'cancelled' => 'Отменен',
                     ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (filled($data['value'])) {
+                            $orderRepository = app(OrderRepositoryInterface::class);
+                            $orderIds = $orderRepository->getByStatus($data['value'])->pluck('id');
+                            return $query->whereIn('id', $orderIds);
+                        }
+                        return $query;
+                    })
                     ->native(false),
 
                 Tables\Filters\SelectFilter::make('payment_status')
@@ -292,6 +323,14 @@ class OrderResource extends Resource
                         'failed' => 'Ошибка оплаты',
                         'refunded' => 'Возврат',
                     ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (filled($data['value'])) {
+                            $orderRepository = app(OrderRepositoryInterface::class);
+                            $orderIds = $orderRepository->getByPaymentStatus($data['value'])->pluck('id');
+                            return $query->whereIn('id', $orderIds);
+                        }
+                        return $query;
+                    })
                     ->native(false),
 
                 Tables\Filters\SelectFilter::make('payment_method')
@@ -327,13 +366,135 @@ class OrderResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Просмотр'),
+
                 Tables\Actions\EditAction::make()
                     ->label('Редактировать'),
+
+                Tables\Actions\Action::make('markAsShipped')
+                    ->label('Отметить как отправленный')
+                    ->icon('heroicon-o-truck')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->visible(fn (Order $record): bool => in_array($record->status, ['pending', 'processing']))
+                    ->action(function (Order $record): void {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        $orderRepository->markAsShipped($record->id);
+
+                        Notification::make()
+                            ->title('Заказ отмечен как отправленный')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('markAsDelivered')
+                    ->label('Отметить как доставленный')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (Order $record): bool => $record->status === 'shipped')
+                    ->action(function (Order $record): void {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        $orderRepository->markAsDelivered($record->id);
+
+                        Notification::make()
+                            ->title('Заказ отмечен как доставленный')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('cancelOrder')
+                    ->label('Отменить заказ')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (Order $record): bool => in_array($record->status, ['pending', 'processing']))
+                    ->action(function (Order $record): void {
+                        $orderRepository = app(OrderRepositoryInterface::class);
+                        $success = $orderRepository->cancelOrder($record->id);
+
+                        if ($success) {
+                            Notification::make()
+                                ->title('Заказ отменен')
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('Не удалось отменить заказ')
+                                ->danger()
+                                ->send();
+                        }
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Удалить'),
+
+                    Tables\Actions\BulkAction::make('markAsShipped')
+                        ->label('Отметить как отправленные')
+                        ->icon('heroicon-o-truck')
+                        ->color('info')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $orderRepository = app(OrderRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                if (in_array($record->status, ['pending', 'processing'])) {
+                                    $orderRepository->markAsShipped($record->id);
+                                    $count++;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title("Отмечено как отправленные: {$count} заказов")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\BulkAction::make('markAsDelivered')
+                        ->label('Отметить как доставленные')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $orderRepository = app(OrderRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                if ($record->status === 'shipped') {
+                                    $orderRepository->markAsDelivered($record->id);
+                                    $count++;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title("Отмечено как доставленные: {$count} заказов")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\BulkAction::make('cancelOrders')
+                        ->label('Отменить заказы')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $orderRepository = app(OrderRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                if (in_array($record->status, ['pending', 'processing'])) {
+                                    $orderRepository->cancelOrder($record->id);
+                                    $count++;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title("Отменено заказов: {$count}")
+                                ->success()
+                                ->send();
+                        }),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

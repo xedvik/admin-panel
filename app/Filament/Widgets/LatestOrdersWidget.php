@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Order;
+use App\Contracts\Repositories\OrderRepositoryInterface;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -17,9 +18,11 @@ class LatestOrdersWidget extends BaseWidget
 
     public function table(Table $table): Table
     {
+        $orderRepository = app(OrderRepositoryInterface::class);
+
         return $table
             ->query(
-                Order::query()
+                $orderRepository->getQuery()
                     ->with(['client'])
                     ->latest()
                     ->limit(10)

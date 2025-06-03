@@ -86,7 +86,7 @@ class SettingsSeeder extends Seeder
                 'type' => 'string',
                 'group' => 'shipping',
                 'label' => 'Время доставки',
-                'description' => 'Стандартное время доставки',
+                'description' => 'Стандартное время доставки (необязательно)',
                 'is_public' => true,
             ],
 

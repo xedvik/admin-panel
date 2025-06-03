@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Product;
+use App\Contracts\Repositories\ProductRepositoryInterface;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -18,9 +19,11 @@ class LowStockWidget extends BaseWidget
 
     public function table(Table $table): Table
     {
+        $productRepository = app(ProductRepositoryInterface::class);
+
         return $table
             ->query(
-                Product::query()
+                $productRepository->getQuery()
                     ->with(['category'])
                     ->where('is_active', true)
                     ->where('stock_quantity', '<=', 5)
@@ -31,7 +34,11 @@ class LowStockWidget extends BaseWidget
             ->columns([
                 Tables\Columns\ImageColumn::make('main_image')
                     ->label('Фото')
-                    ->getStateUsing(fn (?Product $record) => $record?->main_image)
+                    ->getStateUsing(function (?Product $record) {
+                        if (!$record) return null;
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        return $productRepository->getMainImage($record);
+                    })
                     ->size(40)
                     ->circular(),
 
@@ -80,9 +87,8 @@ class LowStockWidget extends BaseWidget
                     ->icon('heroicon-m-plus')
                     ->color('success')
                     ->action(function (Product $record, array $data): void {
-                        $record->update([
-                            'stock_quantity' => $record->stock_quantity + ($data['quantity'] ?? 10)
-                        ]);
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        $productRepository->incrementStock($record->id, $data['quantity'] ?? 10);
                     })
                     ->form([
                         Forms\Components\TextInput::make('quantity')

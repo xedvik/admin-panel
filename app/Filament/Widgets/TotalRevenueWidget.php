@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Order;
+use App\Contracts\Repositories\OrderRepositoryInterface;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 
@@ -43,6 +44,7 @@ class TotalRevenueWidget extends ChartWidget
 
     private function getRevenuePerDay(): array
     {
+        $orderRepository = app(OrderRepositoryInterface::class);
         $labels = [];
         $revenue = [];
 
@@ -50,8 +52,8 @@ class TotalRevenueWidget extends ChartWidget
             $date = Carbon::now()->subDays($i);
             $labels[] = $date->format('d.m');
 
-            $dailyRevenue = Order::whereDate('created_at', $date->format('Y-m-d'))
-                ->where('payment_status', 'paid')
+            $dailyRevenue = $orderRepository->getOrdersByDateRange($date, $date)
+                ->filter(fn($order) => $order->payment_status === 'paid')
                 ->sum('total_amount');
 
             $revenue[] = (int) $dailyRevenue;

@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Order;
+use App\Contracts\Repositories\OrderRepositoryInterface;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 
@@ -43,6 +44,7 @@ class TotalOrdersWidget extends ChartWidget
 
     private function getOrdersPerDay(): array
     {
+        $orderRepository = app(OrderRepositoryInterface::class);
         $labels = [];
         $orders = [];
 
@@ -50,7 +52,7 @@ class TotalOrdersWidget extends ChartWidget
             $date = Carbon::now()->subDays($i);
             $labels[] = $date->format('d.m');
 
-            $orderCount = Order::whereDate('created_at', $date->format('Y-m-d'))->count();
+            $orderCount = $orderRepository->getOrdersByDateRange($date, $date)->count();
             $orders[] = $orderCount;
         }
 

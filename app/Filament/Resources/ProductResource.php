@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Filament\Resources\ProductResource\RelationManagers;
 use App\Models\Product;
+use App\Contracts\Repositories\ProductRepositoryInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
+use Filament\Notifications\Notification;
 
 class ProductResource extends Resource
 {
@@ -49,7 +51,7 @@ class ProductResource extends Resource
                                     ->label('URL (slug)')
                                     ->required()
                                     ->maxLength(255)
-                                    ->unique(Product::class, 'slug', ignoreRecord: true)
+                                    ->unique('products', 'slug', ignoreRecord: true)
                                     ->rules(['alpha_dash'])
                                     ->helperText('Используется в URL адресе'),
 
@@ -62,7 +64,7 @@ class ProductResource extends Resource
 
                                 Forms\Components\TextInput::make('sku')
                                     ->label('Артикул (SKU)')
-                                    ->unique(Product::class, 'sku', ignoreRecord: true)
+                                    ->unique('products', 'sku', ignoreRecord: true)
                                     ->required()
                                     ->maxLength(255),
 
@@ -190,7 +192,11 @@ class ProductResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('main_image')
                     ->label('Фото')
-                    ->getStateUsing(fn (?Product $record) => $record?->main_image)
+                    ->getStateUsing(function (?Product $record) {
+                        if (!$record) return null;
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        return $productRepository->getMainImage($record);
+                    })
                     ->size(50),
 
                 Tables\Columns\TextColumn::make('name')
@@ -211,23 +217,58 @@ class ProductResource extends Resource
                     ->money('RUB')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('stock_quantity')
+                    ->label('Количество')
+                    ->numeric()
+                    ->sortable()
+                    ->alignCenter()
+                    ->badge()
+                    ->color(function (?Product $record): string {
+                        if (!$record || !$record->track_quantity) return 'gray';
+                        $quantity = $record->stock_quantity ?? 0;
+                        if ($quantity <= 0) return 'danger';
+                        if ($quantity <= 5) return 'warning';
+                        return 'success';
+                    })
+                    ->formatStateUsing(function (?Product $record): string {
+                        if (!$record || !$record->track_quantity) {
+                            return 'Не отслеживается';
+                        }
+                        return (string) ($record->stock_quantity ?? 0);
+                    }),
+
                 Tables\Columns\TextColumn::make('discount_percentage')
                     ->label('Скидка')
-                    ->getStateUsing(fn (?Product $record) => $record?->discount_percentage)
+                    ->getStateUsing(function (?Product $record) {
+                        if (!$record) return 0;
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        return $productRepository->calculateDiscountPercent($record);
+                    })
                     ->suffix('%')
                     ->badge()
                     ->color('success')
-                    ->visible(fn (?Product $record) => $record && $record->discount_percentage > 0),
+                    ->visible(function (?Product $record) {
+                        if (!$record) return false;
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        return $productRepository->calculateDiscountPercent($record) > 0;
+                    }),
 
                 Tables\Columns\TextColumn::make('stock_status')
                     ->label('Остатки')
-                    ->getStateUsing(fn (?Product $record) => $record?->stock_status)
+                    ->getStateUsing(function (?Product $record) {
+                        if (!$record) return '';
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        return $productRepository->getStockStatus($record);
+                    })
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'В наличии' => 'success',
-                        'Мало' => 'warning',
-                        'Нет в наличии' => 'danger',
-                        default => 'gray',
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'В наличии' => 'success',
+                            'Мало в наличии' => 'warning',
+                            'Нет в наличии' => 'danger',
+                            'Под заказ' => 'info',
+                            default => 'gray',
+                        };
                     }),
 
                 Tables\Columns\IconColumn::make('is_active')
@@ -255,6 +296,18 @@ class ProductResource extends Resource
                     ->boolean()
                     ->trueLabel('Только активные')
                     ->falseLabel('Только неактивные')
+                    ->query(function (Builder $query, array $data): Builder {
+                        if ($data['value'] === true) {
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $productIds = $productRepository->getActive()->pluck('id');
+                            return $query->whereIn('id', $productIds);
+                        } elseif ($data['value'] === false) {
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $activeIds = $productRepository->getActive()->pluck('id');
+                            return $query->whereNotIn('id', $activeIds);
+                        }
+                        return $query;
+                    })
                     ->native(false),
 
                 Tables\Filters\TernaryFilter::make('is_featured')
@@ -262,6 +315,18 @@ class ProductResource extends Resource
                     ->boolean()
                     ->trueLabel('Только рекомендуемые')
                     ->falseLabel('Только обычные')
+                    ->query(function (Builder $query, array $data): Builder {
+                        if ($data['value'] === true) {
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $productIds = $productRepository->getFeatured()->pluck('id');
+                            return $query->whereIn('id', $productIds);
+                        } elseif ($data['value'] === false) {
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $featuredIds = $productRepository->getFeatured()->pluck('id');
+                            return $query->whereNotIn('id', $featuredIds);
+                        }
+                        return $query;
+                    })
                     ->native(false),
 
                 Tables\Filters\SelectFilter::make('category_id')
@@ -272,22 +337,141 @@ class ProductResource extends Resource
 
                 Tables\Filters\Filter::make('out_of_stock')
                     ->label('Нет в наличии')
-                    ->query(fn (Builder $query): Builder =>
-                        $query->where('track_quantity', true)
-                              ->where('stock_quantity', '<=', 0)
-                              ->where('continue_selling_when_out_of_stock', false)
-                    ),
+                    ->query(function (Builder $query): Builder {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        $outOfStockIds = $productRepository->getOutOfStockProducts()->pluck('id');
+                        return $query->whereIn('id', $outOfStockIds);
+                    }),
+
+                Tables\Filters\Filter::make('low_stock')
+                    ->label('Мало в наличии')
+                    ->query(function (Builder $query): Builder {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        $lowStockIds = $productRepository->getLowStockProducts()->pluck('id');
+                        return $query->whereIn('id', $lowStockIds);
+                    }),
+
+                Tables\Filters\Filter::make('in_stock')
+                    ->label('В наличии')
+                    ->query(function (Builder $query): Builder {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        $inStockIds = $productRepository->getInStock()->pluck('id');
+                        return $query->whereIn('id', $inStockIds);
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Просмотр'),
+
                 Tables\Actions\EditAction::make()
                     ->label('Редактировать'),
+
+                Tables\Actions\Action::make('updateStock')
+                    ->label('Обновить остатки')
+                    ->icon('heroicon-o-cube')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\TextInput::make('stock_quantity')
+                            ->label('Новое количество')
+                            ->numeric()
+                            ->minValue(0)
+                            ->required(),
+                    ])
+                    ->action(function (Product $record, array $data): void {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        $productRepository->updateStock($record->id, $data['stock_quantity']);
+
+                        Notification::make()
+                            ->title('Остатки обновлены')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('addStock')
+                    ->label('Добавить остатки')
+                    ->icon('heroicon-o-plus')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\TextInput::make('quantity')
+                            ->label('Количество для добавления')
+                            ->numeric()
+                            ->minValue(1)
+                            ->required(),
+                    ])
+                    ->action(function (Product $record, array $data): void {
+                        $productRepository = app(ProductRepositoryInterface::class);
+                        $productRepository->incrementStock($record->id, $data['quantity']);
+
+                        Notification::make()
+                            ->title("Добавлено {$data['quantity']} единиц товара")
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Удалить'),
+
+                    Tables\Actions\BulkAction::make('activateProducts')
+                        ->label('Активировать товары')
+                        ->icon('heroicon-o-check')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                $productRepository->update($record->id, ['is_active' => true]);
+                                $count++;
+                            }
+
+                            Notification::make()
+                                ->title("Активировано товаров: {$count}")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\BulkAction::make('deactivateProducts')
+                        ->label('Деактивировать товары')
+                        ->icon('heroicon-o-x-mark')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                $productRepository->update($record->id, ['is_active' => false]);
+                                $count++;
+                            }
+
+                            Notification::make()
+                                ->title("Деактивировано товаров: {$count}")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\BulkAction::make('markAsFeatured')
+                        ->label('Сделать рекомендуемыми')
+                        ->icon('heroicon-o-star')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $productRepository = app(ProductRepositoryInterface::class);
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                $productRepository->update($record->id, ['is_featured' => true]);
+                                $count++;
+                            }
+
+                            Notification::make()
+                                ->title("Отмечено как рекомендуемые: {$count} товаров")
+                                ->success()
+                                ->send();
+                        }),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
