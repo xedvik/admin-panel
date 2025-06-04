@@ -5,7 +5,10 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Filament\Resources\ProductResource\RelationManagers;
 use App\Models\Product;
+use App\Models\ProductAttribute;
 use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\ProductAttributeRepositoryInterface;
+use App\Contracts\Repositories\ProductAttributeValueRepositoryInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -181,6 +184,72 @@ class ProductResource extends Resource
                             ->maxLength(255)
                             ->helperText('Описание для поисковых систем (до 255 символов)'),
                     ])
+                    ->collapsed()
+                    ->columnSpanFull(),
+
+                Forms\Components\Section::make('Атрибуты товара')
+                    ->schema(function () {
+                        $attributeRepository = app(ProductAttributeRepositoryInterface::class);
+                        $attributes = $attributeRepository->getActive();
+
+                        if ($attributes->isEmpty()) {
+                            return [
+                                Forms\Components\Placeholder::make('no_attributes')
+                                    ->label('Атрибуты не настроены')
+                                    ->content('Сначала создайте атрибуты товаров в разделе "Атрибуты товаров"'),
+                            ];
+                        }
+
+                        $fields = [];
+
+                        foreach ($attributes as $attribute) {
+                            switch ($attribute->type) {
+                                case 'text':
+                                    $fields[] = Forms\Components\TextInput::make("attribute_{$attribute->id}")
+                                        ->label($attribute->name)
+                                        ->maxLength(255)
+                                        ->helperText($attribute->description)
+                                        ->dehydrated(false);
+                                    break;
+
+                                case 'number':
+                                    $fields[] = Forms\Components\TextInput::make("attribute_{$attribute->id}")
+                                        ->label($attribute->name)
+                                        ->numeric()
+                                        ->helperText($attribute->description)
+                                        ->dehydrated(false);
+                                    break;
+
+                                case 'select':
+                                    if (!empty($attribute->options)) {
+                                        $options = array_combine($attribute->options, $attribute->options);
+                                        $fields[] = Forms\Components\Select::make("attribute_{$attribute->id}")
+                                            ->label($attribute->name)
+                                            ->options($options)
+                                            ->searchable()
+                                            ->helperText($attribute->description)
+                                            ->dehydrated(false);
+                                    }
+                                    break;
+
+                                case 'boolean':
+                                    $fields[] = Forms\Components\Toggle::make("attribute_{$attribute->id}")
+                                        ->label($attribute->name)
+                                        ->helperText($attribute->description)
+                                        ->dehydrated(false);
+                                    break;
+
+                                case 'date':
+                                    $fields[] = Forms\Components\DatePicker::make("attribute_{$attribute->id}")
+                                        ->label($attribute->name)
+                                        ->helperText($attribute->description)
+                                        ->dehydrated(false);
+                                    break;
+                            }
+                        }
+
+                        return $fields;
+                    })
                     ->collapsed()
                     ->columnSpanFull(),
             ]);

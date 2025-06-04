@@ -4,6 +4,7 @@ namespace App\Filament\Resources\OrderResource\RelationManagers;
 
 use App\Models\Product;
 use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\ProductAttributeValueRepositoryInterface;
 use App\Contracts\Repositories\OrderItemRepositoryInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -45,12 +46,24 @@ class OrderItemsRelationManager extends RelationManager
                     ->afterStateUpdated(function (Forms\Set $set, $state) {
                         if ($state) {
                             $productRepository = app(ProductRepositoryInterface::class);
+                            $attributeValueRepository = app(ProductAttributeValueRepositoryInterface::class);
+
                             $product = $productRepository->find($state);
                             if ($product) {
                                 $set('product_name', $product->name);
                                 $set('product_sku', $product->sku);
                                 $set('product_price', $product->price);
                                 $set('total_price', $product->price);
+
+                                // Автозаполнение варианта товара из атрибутов
+                                $attributes = $attributeValueRepository->getByProduct($product->id);
+                                if ($attributes->isNotEmpty()) {
+                                    $variant = $attributes->map(function ($attributeValue) {
+                                        return $attributeValue->attribute->name . ': ' . $attributeValue->value;
+                                    })->join(', ');
+
+                                    $set('product_variant', $variant);
+                                }
                             }
                         }
                     }),
@@ -102,9 +115,10 @@ class OrderItemsRelationManager extends RelationManager
                     ]),
 
                 Forms\Components\Textarea::make('product_variant')
-                    ->label('Вариант товара (JSON)')
-                    ->helperText('Например: {"color": "red", "size": "M"}')
-                    ->rows(3)
+                    ->label('Вариант товара')
+                    ->placeholder('Например: Цвет: Красный, Размер: L, Материал: Хлопок')
+                    ->helperText('Укажите особенности товара (цвет, размер, материал и т.д.)')
+                    ->rows(2)
                     ->columnSpanFull(),
 
                 Forms\Components\Textarea::make('notes')
@@ -118,6 +132,7 @@ class OrderItemsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('product_name')
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['product']))
             ->columns([
                 Tables\Columns\ImageColumn::make('product_image')
                     ->label('Фото')
@@ -155,15 +170,10 @@ class OrderItemsRelationManager extends RelationManager
 
                 Tables\Columns\TextColumn::make('product_variant')
                     ->label('Вариант')
-                    ->formatStateUsing(function ($state) {
-                        if (is_array($state) && !empty($state)) {
-                            return collect($state)->map(fn ($value, $key) => "{$key}: {$value}")->join(', ');
-                        }
-                        return '-';
-                    })
+                    ->limit(50)
+                    ->placeholder('Без вариантов')
                     ->badge()
-                    ->color('gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->color('gray'),
 
                 Tables\Columns\TextColumn::make('notes')
                     ->label('Примечания')

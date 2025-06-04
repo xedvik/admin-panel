@@ -30,15 +30,12 @@ class OrderItemFactory extends Factory
             'quantity' => $quantity, // количество товара
             'product_price' => $productPrice, // цена товара в рублях
             'total_price' => $totalPrice, // сумма товара в рублях
-            'product_variant' => [
-                'size' => $this->faker->randomElement(['S', 'M', 'L', 'XL']),
-                'color' => $this->faker->colorName,
-                'material' => $this->faker->word,
-                'style' => $this->faker->word,
-                'pattern' => $this->faker->word,
-                'brand' => $this->faker->word,
-                'category' => $this->faker->word,
-            ] // для хранения размера, цвета и т.д.
+            'product_variant' => $this->faker->randomElement([
+                'Размер: ' . $this->faker->randomElement(['S', 'M', 'L', 'XL']) . ', Цвет: ' . $this->faker->colorName,
+                'Материал: ' . $this->faker->word . ', Стиль: ' . $this->faker->word,
+                'Размер: ' . $this->faker->randomElement(['42', '44', '46', '48']) . ', Цвет: ' . $this->faker->colorName . ', Материал: ' . $this->faker->word,
+                null, // без варианта
+            ]), // вариант товара как строка
         ];
     }
 

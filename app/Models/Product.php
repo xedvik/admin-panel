@@ -68,5 +68,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-
+    /**
+     * Получить значения атрибутов товара
+     */
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(ProductAttributeValue::class);
+    }
 }

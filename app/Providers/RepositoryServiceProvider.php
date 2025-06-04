@@ -13,6 +13,8 @@ use App\Contracts\Repositories\ClientRepositoryInterface;
 use App\Contracts\Repositories\CategoryRepositoryInterface;
 use App\Contracts\Repositories\OrderItemRepositoryInterface;
 use App\Contracts\Repositories\SettingRepositoryInterface;
+use App\Contracts\Repositories\ProductAttributeRepositoryInterface;
+use App\Contracts\Repositories\ProductAttributeValueRepositoryInterface;
 
 // Реализации
 use App\Repositories\UserRepository;
@@ -22,6 +24,8 @@ use App\Repositories\ClientRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\OrderItemRepository;
 use App\Repositories\SettingRepository;
+use App\Repositories\ProductAttributeRepository;
+use App\Repositories\ProductAttributeValueRepository;
 
 // Модели
 use App\Models\User;
@@ -31,6 +35,8 @@ use App\Models\Client;
 use App\Models\Category;
 use App\Models\OrderItem;
 use App\Models\Setting;
+use App\Models\ProductAttribute;
+use App\Models\ProductAttributeValue;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -49,7 +55,10 @@ class RepositoryServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(ProductRepositoryInterface::class, function ($app) {
-            return new ProductRepository($app->make(Product::class));
+            return new ProductRepository(
+                $app->make(Product::class),
+                $app->make(ProductAttributeValueRepositoryInterface::class)
+            );
         });
 
         $this->app->bind(ClientRepositoryInterface::class, function ($app) {
@@ -66,6 +75,14 @@ class RepositoryServiceProvider extends ServiceProvider
 
         $this->app->bind(SettingRepositoryInterface::class, function ($app) {
             return new SettingRepository($app->make(Setting::class));
+        });
+
+        $this->app->bind(ProductAttributeRepositoryInterface::class, function ($app) {
+            return new ProductAttributeRepository($app->make(ProductAttribute::class));
+        });
+
+        $this->app->bind(ProductAttributeValueRepositoryInterface::class, function ($app) {
+            return new ProductAttributeValueRepository($app->make(ProductAttributeValue::class));
         });
     }
 

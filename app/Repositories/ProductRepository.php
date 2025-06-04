@@ -3,15 +3,19 @@
 namespace App\Repositories;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\ProductAttributeValueRepositoryInterface;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProductRepository extends BaseRepository implements ProductRepositoryInterface
 {
-    public function __construct(Product $model)
+    protected ProductAttributeValueRepositoryInterface $attributeValueRepository;
+
+    public function __construct(Product $model, ProductAttributeValueRepositoryInterface $attributeValueRepository)
     {
         parent::__construct($model);
+        $this->attributeValueRepository = $attributeValueRepository;
     }
 
     public function getActive(): Collection
@@ -240,5 +244,90 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         }
 
         return $product->continue_selling_when_out_of_stock;
+    }
+
+    /**
+     * Получить товары с атрибутами
+     */
+    public function getWithAttributes(): Collection
+    {
+        return $this->model->with('attributeValues.attribute')->get();
+    }
+
+    /**
+     * Получить товары по значению атрибута
+     */
+    public function getByAttributeValue(int $attributeId, string $value): Collection
+    {
+        return $this->attributeValueRepository->getProductsByAttributeValue($attributeId, $value);
+    }
+
+    /**
+     * Получить уникальные значения атрибута для товаров в категории
+     */
+    public function getAttributeValuesForCategory(int $categoryId, int $attributeId): Collection
+    {
+        return $this->model->where('category_id', $categoryId)
+            ->whereHas('attributeValues', function ($query) use ($attributeId) {
+                $query->where('attribute_id', $attributeId);
+            })
+            ->with(['attributeValues' => function ($query) use ($attributeId) {
+                $query->where('attribute_id', $attributeId);
+            }])
+            ->get()
+            ->pluck('attributeValues')
+            ->flatten()
+            ->unique('value');
+    }
+
+    /**
+     * Фильтровать товары по атрибутам
+     */
+    public function filterByAttributes(array $attributeFilters): Collection
+    {
+        $query = $this->model->query();
+
+        foreach ($attributeFilters as $attributeId => $values) {
+            if (!is_array($values)) {
+                $values = [$values];
+            }
+
+            $query->whereHas('attributeValues', function ($subQuery) use ($attributeId, $values) {
+                $subQuery->where('attribute_id', $attributeId)
+                         ->whereIn('value', $values);
+            });
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Синхронизировать атрибуты товара
+     */
+    public function syncAttributes(int $productId, array $attributes): bool
+    {
+        try {
+            // Удаляем старые атрибуты
+            $this->attributeValueRepository->deleteByProduct($productId);
+
+            // Добавляем новые
+            foreach ($attributes as $attributeId => $value) {
+                if (!empty($value)) {
+                    $this->attributeValueRepository->updateOrCreateForProduct($productId, $attributeId, $value);
+                }
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Удалить все атрибуты товара
+     */
+    public function clearAttributes(int $productId): bool
+    {
+        return $this->attributeValueRepository->deleteByProduct($productId);
     }
 }

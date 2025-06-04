@@ -109,4 +109,34 @@ interface ProductRepositoryInterface extends BaseRepositoryInterface
     public function checkInStock(Product $product): bool;
 
     public function getPopularProducts(int $limit = 10): Collection;
+
+    /**
+     * Получить товары с атрибутами
+     */
+    public function getWithAttributes(): Collection;
+
+    /**
+     * Получить товары по значению атрибута
+     */
+    public function getByAttributeValue(int $attributeId, string $value): Collection;
+
+    /**
+     * Получить уникальные значения атрибута для товаров в категории
+     */
+    public function getAttributeValuesForCategory(int $categoryId, int $attributeId): Collection;
+
+    /**
+     * Фильтровать товары по атрибутам
+     */
+    public function filterByAttributes(array $attributeFilters): Collection;
+
+    /**
+     * Синхронизировать атрибуты товара
+     */
+    public function syncAttributes(int $productId, array $attributes): bool;
+
+    /**
+     * Удалить все атрибуты товара
+     */
+    public function clearAttributes(int $productId): bool;
 }
