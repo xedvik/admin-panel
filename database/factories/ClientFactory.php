@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\ClientAddress;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -23,24 +24,9 @@ class ClientFactory extends Factory
             'phone' => $this->generateRussianPhone(),
             'date_of_birth' => $this->faker->dateTimeBetween('-20 years', '-10 years'),
             'gender' => $this->faker->optional()->randomElement(['male', 'female']),
-            'addresses' => [
-                [
-                    'type' => 'shipping', // доставка
-                    'is_default' => true, // основной адрес
-                    'first_name' => $this->faker->firstName, // имя
-                    'last_name' => $this->faker->lastName, // фамилия
-                    'company' => $this->faker->optional()->company, // компания
-                    'street' => $this->faker->streetAddress, // улица
-                    'city' => $this->faker->city, // город
-                    'state' => $this->faker->state, // область
-                    'postal_code' => $this->faker->postcode, // почтовый индекс
-                    'country' => 'Russia', // страна
-                    'phone' => $this->generateRussianPhone(), // телефон
-                ],
-            ],
-            'accepts_marketing' => $this->faker->boolean(60), // согласие на получение маркетинговых материалов
-            'email_verified_at' => $this->faker->optional(0.8)->dateTimeBetween('-1 year', 'now'), // подтверждение email
-            'is_active' => $this->faker->boolean(95), // активный клиент
+            'accepts_marketing' => $this->faker->boolean(60),
+            'email_verified_at' => $this->faker->optional(0.8)->dateTimeBetween('-1 year', 'now'),
+            'is_active' => $this->faker->boolean(95),
         ];
     }
 
@@ -88,38 +74,105 @@ class ClientFactory extends Factory
     }
 
     /**
+     * Создать базовый адрес для клиента
+     */
+    public function configure()
+    {
+        return $this->afterCreating(function ($client) {
+            // Создаем базовый адрес доставки для каждого клиента
+            ClientAddress::create([
+                'client_id' => $client->id,
+                'type' => $this->faker->randomElement(['shipping', 'billing']),
+                'label' => $this->faker->randomElement(['Дом', 'Офис', 'Основной']),
+                'is_default' => true,
+                'first_name' => $this->faker->firstName,
+                'last_name' => $this->faker->lastName,
+                'company' => $this->faker->optional()->company,
+                'street' => $this->faker->streetAddress,
+                'city' => $this->faker->city,
+                'state' => $this->faker->state,
+                'postal_code' => $this->faker->postcode,
+                'country' => 'Russia',
+                'phone' => $this->generateRussianPhone(),
+            ]);
+        });
+    }
+
+    /**
      * Клиент с несколькими адресами
      */
     public function withMultipleAddresses(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'addresses' => [
-                [
+        return $this->afterCreating(function ($client) {
+            // Основной адрес доставки
+            ClientAddress::create([
+                'client_id' => $client->id,
                     'type' => 'shipping',
+                'label' => 'Дом',
                     'is_default' => true,
                     'first_name' => $this->faker->firstName,
                     'last_name' => $this->faker->lastName,
+                'company' => $this->faker->optional(30)->company,
+                'street' => $this->faker->streetAddress,
+                'city' => $this->faker->city,
+                'state' => $this->faker->state,
+                'postal_code' => $this->faker->postcode,
+                'country' => 'Russia',
+                'phone' => $this->generateRussianPhone(),
+            ]);
+
+            // Рабочий адрес доставки
+            ClientAddress::create([
+                'client_id' => $client->id,
+                'type' => 'shipping',
+                'label' => 'Офис',
+                'is_default' => false,
+                'first_name' => $this->faker->firstName,
+                'last_name' => $this->faker->lastName,
+                'company' => $this->faker->company,
                     'street' => $this->faker->streetAddress,
                     'city' => $this->faker->city,
                     'state' => $this->faker->state,
                     'postal_code' => $this->faker->postcode,
                     'country' => 'Russia',
                     'phone' => $this->generateRussianPhone(),
-                ],
-                [
+            ]);
+
+            // Адрес оплаты
+            ClientAddress::create([
+                'client_id' => $client->id,
                     'type' => 'billing',
+                'label' => 'Юридический адрес',
+                'is_default' => true,
+                'first_name' => $this->faker->firstName,
+                'last_name' => $this->faker->lastName,
+                'company' => $this->faker->company,
+                'street' => $this->faker->streetAddress,
+                'city' => $this->faker->city,
+                'state' => $this->faker->state,
+                'postal_code' => $this->faker->postcode,
+                'country' => 'Russia',
+                'phone' => $this->generateRussianPhone(),
+            ]);
+
+            // Иногда добавляем дачу
+            if ($this->faker->boolean(30)) {
+                ClientAddress::create([
+                    'client_id' => $client->id,
+                    'type' => 'shipping',
+                    'label' => 'Дача',
                     'is_default' => false,
                     'first_name' => $this->faker->firstName,
                     'last_name' => $this->faker->lastName,
-                    'company' => $this->faker->company,
+                    'company' => null,
                     'street' => $this->faker->streetAddress,
                     'city' => $this->faker->city,
                     'state' => $this->faker->state,
                     'postal_code' => $this->faker->postcode,
                     'country' => 'Russia',
                     'phone' => $this->generateRussianPhone(),
-                ],
-            ],
         ]);
+            }
+        });
     }
 }

@@ -81,4 +81,24 @@ interface ClientRepositoryInterface extends BaseRepositoryInterface
      * Получить полное имя клиента
      */
     public function getClientFullName(int $clientId): string;
+
+    /**
+     * Получить основной адрес доставки клиента
+     */
+    public function getDefaultShippingAddress(int $clientId): ?array;
+
+    /**
+     * Получить основной адрес оплаты клиента
+     */
+    public function getDefaultBillingAddress(int $clientId): ?array;
+
+    /**
+     * Получить все адреса доставки клиента
+     */
+    public function getShippingAddresses(int $clientId): array;
+
+    /**
+     * Получить все адреса оплаты клиента
+     */
+    public function getBillingAddresses(int $clientId): array;
 }

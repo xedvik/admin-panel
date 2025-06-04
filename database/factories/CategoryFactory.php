@@ -18,7 +18,10 @@ class CategoryFactory extends Factory
      */
     public function definition(): array
     {
-        $name = $this->faker->words(2, true);
+        // Генерируем уникальное название комбинируя разные подходы
+        $name = $this->faker->unique()->sentence(2, false);
+        // Убираем точку в конце и капитализируем
+        $name = ucfirst(rtrim($name, '.'));
 
         return [
             'name' => $name, // название категории

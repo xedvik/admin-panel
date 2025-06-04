@@ -31,4 +31,14 @@ interface ProductAttributeValueRepositoryInterface extends BaseRepositoryInterfa
      * Получить товары с определенным значением атрибута
      */
     public function getProductsByAttributeValue(int $attributeId, string $value): Collection;
+
+    /**
+     * Получить отформатированное значение в зависимости от типа атрибута
+     */
+    public function getFormattedValue(int $valueId): string;
+
+    /**
+     * Получить значение с правильным типом в зависимости от атрибута
+     */
+    public function getCastedValue(int $valueId);
 }

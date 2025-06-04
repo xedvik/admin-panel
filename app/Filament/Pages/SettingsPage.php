@@ -6,10 +6,8 @@ use Filament\Pages\Page;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Actions\Action;
-use App\Models\Setting;
 use App\Contracts\Repositories\SettingRepositoryInterface;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Validator;
 
 class SettingsPage extends Page implements Forms\Contracts\HasForms
 {
@@ -19,7 +17,7 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
     protected static string $view = 'filament.pages.settings-page';
     protected static ?string $title = 'Настройки сайта';
     protected static ?string $navigationLabel = 'Настройки';
-    protected static ?int $navigationSort = 99;
+    protected static ?int $navigationSort = 10;
 
     public ?array $data = [];
 
@@ -32,24 +30,43 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
     {
         $settingRepository = app(SettingRepositoryInterface::class);
 
-        // Загружаем настройки используя getValue
+        // Загружаем только статичные настройки
         $settings = [
+            // Основные
             'site_name' => $settingRepository->getValue('site_name', ''),
             'site_description' => $settingRepository->getValue('site_description', ''),
             'contact_email' => $settingRepository->getValue('contact_email', ''),
             'contact_phone' => $settingRepository->getValue('contact_phone', ''),
             'site_logo' => $settingRepository->getValue('site_logo', ''),
+
+            // Доставка
             'free_shipping_threshold' => $settingRepository->getValue('free_shipping_threshold', null),
             'shipping_cost' => $settingRepository->getValue('shipping_cost', 0),
             'delivery_time' => $settingRepository->getValue('delivery_time', ''),
+
+            // Магазин
             'store_status' => $settingRepository->getValue('store_status', true),
             'maintenance_message' => $settingRepository->getValue('maintenance_message', ''),
             'min_order_amount' => $settingRepository->getValue('min_order_amount', 0),
+
+            // SEO
             'meta_keywords' => $settingRepository->getValue('meta_keywords', ''),
             'google_analytics_id' => $settingRepository->getValue('google_analytics_id', ''),
             'yandex_metrika_id' => $settingRepository->getValue('yandex_metrika_id', ''),
+
+            // Соцсети
+            'social_vk' => '',
+            'social_telegram' => '',
+            'social_instagram' => '',
+            'social_youtube' => '',
+
+            // Уведомления
             'admin_email_notifications' => $settingRepository->getValue('admin_email_notifications', true),
             'notification_emails' => $settingRepository->getValue('notification_emails', ''),
+
+            // Валюта
+            'currency_symbol' => $settingRepository->getValue('currency_symbol', '₽'),
+            'currency_code' => $settingRepository->getValue('currency_code', 'RUB'),
         ];
 
         // Обрабатываем социальные сети
@@ -189,6 +206,17 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
                                     ->label('Email для уведомлений')
                                     ->rows(2)
                                     ->helperText('Список email через запятую'),
+
+                                Forms\Components\TextInput::make('currency_symbol')
+                                    ->label('Символ валюты')
+                                    ->required()
+                                    ->maxLength(5),
+
+                                Forms\Components\TextInput::make('currency_code')
+                                    ->label('Код валюты')
+                                    ->required()
+                                    ->maxLength(3)
+                                    ->placeholder('RUB'),
                             ]),
                     ])
                     ->columnSpanFull(),
@@ -209,12 +237,7 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
     {
         try {
             $settingRepository = app(SettingRepositoryInterface::class);
-
-            // Валидируем данные формы
             $data = $this->form->getState();
-
-            // Дополнительная валидация
-            $this->validateSettings($data);
 
             // Обрабатываем социальные сети
             $socialLinks = [
@@ -227,45 +250,22 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
             // Удаляем социальные сети из основных данных
             unset($data['social_vk'], $data['social_telegram'], $data['social_instagram'], $data['social_youtube']);
 
-            // Сохраняем настройки через репозиторий
+            // Сохраняем только значения существующих настроек
             foreach ($data as $key => $value) {
-                if ($value !== null) {
-                    $setting = $settingRepository->findByKey($key);
-                    if ($setting) {
-                        $type = $setting->type;
-
-                        // Обрабатываем boolean значения
-                        if ($type === 'boolean') {
-                            $value = $value ? '1' : '0';
-                        }
-
-                        $settingRepository->setValue($key, $value, $type);
-                    } else {
-                        // Создаем новую настройку если не существует
-                        $type = is_bool($value) ? 'boolean' : (is_numeric($value) ? 'integer' : 'string');
-
-                        // Определяем группу на основе ключа
-                        $group = $this->getGroupForKey($key);
-                        $label = $this->getLabelForKey($key);
-
-                        $settingRepository->setValue($key, $value, $type, [
-                            'group' => $group,
-                            'label' => $label,
-                            'is_public' => true,
-                        ]);
+                $setting = $settingRepository->findByKey($key);
+                if ($setting) {
+                    // Обрабатываем boolean значения
+                    if ($setting->type === 'boolean') {
+                        $value = $value ? '1' : '0';
                     }
+                    $settingRepository->setValue($key, $value, $setting->type);
                 }
             }
 
-            // Сохраняем социальные сети как JSON через репозиторий
-            $settingRepository->setValue('social_links', $socialLinks, 'json', [
-                'group' => 'social',
-                'label' => 'Ссылки на соцсети',
-                'description' => 'JSON с ссылками на социальные сети',
-                'is_public' => true,
-            ]);
+            // Сохраняем социальные сети
+            $settingRepository->setValue('social_links', $socialLinks, 'json');
 
-            // Очищаем кеш настроек через репозиторий
+            // Очищаем кеш
             $settingRepository->clearCache();
 
             Notification::make()
@@ -273,16 +273,6 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
                 ->success()
                 ->send();
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Обрабатываем ошибки валидации
-            $errors = $e->validator->errors()->all();
-            Notification::make()
-                ->title('Ошибка валидации')
-                ->body(implode(', ', $errors))
-                ->danger()
-                ->send();
-
-            throw $e; // Перебрасываем исключение для показа ошибок в форме
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Ошибка при сохранении')
@@ -290,68 +280,5 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
                 ->danger()
                 ->send();
         }
-    }
-
-    /**
-     * Дополнительная валидация настроек
-     */
-    protected function validateSettings(array $data): void
-    {
-        $rules = [
-            'site_name' => 'required|string|max:255',
-            'contact_email' => 'required|email',
-            'contact_phone' => 'required|string|max:50',
-            'free_shipping_threshold' => 'nullable|integer|min:0',
-            'shipping_cost' => 'nullable|integer|min:0',
-            'delivery_time' => 'nullable|string|max:255',
-            'min_order_amount' => 'nullable|integer|min:0',
-        ];
-
-        $validator = Validator::make($data, $rules);
-
-        if ($validator->fails()) {
-            throw new \Illuminate\Validation\ValidationException($validator);
-        }
-    }
-
-    /**
-     * Получить группу для ключа настройки
-     */
-    private function getGroupForKey(string $key): string
-    {
-        return match(true) {
-            str_starts_with($key, 'site_') || str_starts_with($key, 'contact_') => 'general',
-            str_starts_with($key, 'shipping_') || str_starts_with($key, 'delivery_') || str_starts_with($key, 'free_shipping_') => 'shipping',
-            str_starts_with($key, 'store_') || str_starts_with($key, 'min_order_') || str_starts_with($key, 'maintenance_') => 'store',
-            str_starts_with($key, 'meta_') || str_starts_with($key, 'google_') || str_starts_with($key, 'yandex_') => 'seo',
-            str_starts_with($key, 'admin_') || str_starts_with($key, 'notification_') => 'notifications',
-            default => 'general'
-        };
-    }
-
-    /**
-     * Получить название для ключа настройки
-     */
-    private function getLabelForKey(string $key): string
-    {
-        return match($key) {
-            'site_name' => 'Название сайта',
-            'site_description' => 'Описание сайта',
-            'contact_email' => 'Email для связи',
-            'contact_phone' => 'Телефон для связи',
-            'site_logo' => 'Логотип сайта',
-            'free_shipping_threshold' => 'Сумма бесплатной доставки',
-            'shipping_cost' => 'Стоимость доставки',
-            'delivery_time' => 'Время доставки',
-            'store_status' => 'Магазин открыт',
-            'maintenance_message' => 'Сообщение при закрытии',
-            'min_order_amount' => 'Минимальная сумма заказа',
-            'meta_keywords' => 'Ключевые слова',
-            'google_analytics_id' => 'Google Analytics ID',
-            'yandex_metrika_id' => 'Яндекс.Метрика ID',
-            'admin_email_notifications' => 'Email уведомления админу',
-            'notification_emails' => 'Email для уведомлений',
-            default => ucfirst(str_replace('_', ' ', $key))
-        };
     }
 }

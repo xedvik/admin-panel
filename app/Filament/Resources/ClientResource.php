@@ -5,15 +5,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
-use App\Contracts\Repositories\ClientRepositoryInterface;
-use Filament\Forms;
+use App\Services\Forms\ClientFormFieldFactory;
+use App\Services\Tables\ClientTableElementsFactory;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Notifications\Notification;
 
 class ClientResource extends Resource
 {
@@ -31,415 +27,17 @@ class ClientResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Grid::make(2)
-                    ->schema([
-                        Forms\Components\Section::make('Личная информация')
-                            ->schema([
-                                Forms\Components\TextInput::make('first_name')
-                                    ->label('Имя')
-                                    ->required()
-                                    ->maxLength(255),
-
-                                Forms\Components\TextInput::make('last_name')
-                                    ->label('Фамилия')
-                                    ->required()
-                                    ->maxLength(255),
-
-                                Forms\Components\TextInput::make('email')
-                                    ->label('Email')
-                                    ->email()
-                                    ->required()
-                                    ->unique('clients', 'email', ignoreRecord: true)
-                                    ->maxLength(255),
-
-                                Forms\Components\TextInput::make('phone')
-                                    ->label('Телефон')
-                                    ->tel()
-                                    ->maxLength(255),
-
-                                Forms\Components\DatePicker::make('date_of_birth')
-                                    ->label('Дата рождения')
-                                    ->maxDate(now()->subYears(10)),
-
-                                Forms\Components\Select::make('gender')
-                                    ->label('Пол')
-                                    ->options([
-                                        'male' => 'Мужской',
-                                        'female' => 'Женский',
-                                    ])
-                                    ->native(false),
-                            ])
-                            ->columnSpan(1),
-
-                        Forms\Components\Section::make('Настройки')
-                            ->schema([
-                                Forms\Components\Toggle::make('is_active')
-                                    ->label('Активен')
-                                    ->default(true)
-                                    ->helperText('Может ли клиент заходить в личный кабинет'),
-
-                                Forms\Components\Toggle::make('accepts_marketing')
-                                    ->label('Согласие на маркетинг')
-                                    ->default(false)
-                                    ->helperText('Согласие на получение рекламных материалов'),
-
-                                Forms\Components\DateTimePicker::make('email_verified_at')
-                                    ->label('Email подтвержден')
-                                    ->helperText('Дата подтверждения email адреса'),
-                            ])
-                            ->columnSpan(1),
-                    ]),
-
-                Forms\Components\Section::make('Адреса')
-                    ->schema([
-                        Forms\Components\Repeater::make('addresses')
-                            ->label('Адреса клиента')
-                            ->schema([
-                                Forms\Components\Grid::make(3)
-                                    ->schema([
-                                        Forms\Components\Select::make('type')
-                                            ->label('Тип адреса')
-                                            ->options([
-                                                'shipping' => 'Доставка',
-                                                'billing' => 'Оплата',
-                                            ])
-                                            ->required()
-                                            ->default('shipping'),
-
-                                        Forms\Components\Toggle::make('is_default')
-                                            ->label('Основной адрес')
-                                            ->default(false),
-
-                                        Forms\Components\TextInput::make('company')
-                                            ->label('Компания'),
-                                    ]),
-
-                                Forms\Components\Grid::make(2)
-                                    ->schema([
-                                        Forms\Components\TextInput::make('first_name')
-                                            ->label('Имя')
-                                            ->required(),
-
-                                        Forms\Components\TextInput::make('last_name')
-                                            ->label('Фамилия')
-                                            ->required(),
-                                    ]),
-
-                                Forms\Components\TextInput::make('street')
-                                    ->label('Адрес')
-                                    ->required()
-                                    ->columnSpanFull(),
-
-                                Forms\Components\Grid::make(3)
-                                    ->schema([
-                                        Forms\Components\TextInput::make('city')
-                                            ->label('Город')
-                                            ->required(),
-
-                                        Forms\Components\TextInput::make('state')
-                                            ->label('Область/Регион'),
-
-                                        Forms\Components\TextInput::make('postal_code')
-                                            ->label('Почтовый индекс'),
-                                    ]),
-
-                                Forms\Components\Grid::make(2)
-                                    ->schema([
-                                        Forms\Components\TextInput::make('country')
-                                            ->label('Страна')
-                                            ->default('Russia'),
-
-                                        Forms\Components\TextInput::make('phone')
-                                            ->label('Телефон')
-                                            ->tel(),
-                                    ]),
-                            ])
-                            ->addActionLabel('Добавить адрес')
-                            ->collapsible()
-                            ->cloneable()
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsed(),
-            ]);
+        return $form->schema(static::getFormFieldFactory()->createFullFormSchema());
     }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('full_name')
-                    ->label('Имя Фамилия')
-                    ->searchable(['first_name', 'last_name'])
-                    ->sortable()
-                    ->getStateUsing(function (Client $record): string {
-                        $clientRepository = app(ClientRepositoryInterface::class);
-                        return $clientRepository->getClientFullName($record->id);
-                    })
-                    ->description(fn (Client $record): string => $record->email),
-
-                Tables\Columns\TextColumn::make('phone')
-                    ->label('Телефон')
-                    ->searchable()
-                    ->copyable(),
-
-                Tables\Columns\TextColumn::make('customer_status')
-                    ->label('Статус')
-                    ->badge()
-                    ->getStateUsing(function (Client $record): string {
-                        $clientRepository = app(ClientRepositoryInterface::class);
-                        return $clientRepository->getClientStatus($record->id);
-                    })
-                    ->color(fn (string $state): string => match ($state) {
-                        'VIP' => 'success',
-                        'Постоянный' => 'warning',
-                        'Обычный' => 'gray',
-                        'Новый' => 'info',
-                        default => 'gray',
-                    }),
-
-                Tables\Columns\TextColumn::make('total_orders')
-                    ->label('Заказов')
-                    ->badge()
-                    ->color('info')
-                    ->getStateUsing(function (Client $record): int {
-                        $clientRepository = app(ClientRepositoryInterface::class);
-                        return $clientRepository->getClientOrdersCount($record->id);
-                    }),
-
-                Tables\Columns\TextColumn::make('total_spent')
-                    ->label('Потрачено')
-                    ->money('RUB')
-                    ->sortable()
-                    ->getStateUsing(function (Client $record): int {
-                        $clientRepository = app(ClientRepositoryInterface::class);
-                        return $clientRepository->getClientTotalSpent($record->id);
-                    }),
-
-                Tables\Columns\IconColumn::make('email_verified_at')
-                    ->label('Email подтвержден')
-                    ->boolean()
-                    ->getStateUsing(fn (Client $record) => !is_null($record->email_verified_at))
-                    ->trueIcon('heroicon-o-check-badge')
-                    ->falseIcon('heroicon-o-x-mark'),
-
-                Tables\Columns\IconColumn::make('accepts_marketing')
-                    ->label('Маркетинг')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-megaphone')
-                    ->falseIcon('heroicon-o-no-symbol'),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Активен')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-badge')
-                    ->falseIcon('heroicon-o-x-mark'),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Регистрация')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Активные')
-                    ->boolean()
-                    ->trueLabel('Только активные')
-                    ->falseLabel('Только неактивные')
-                    ->query(function (Builder $query, array $data): Builder {
-                        if ($data['value'] === true) {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $clientIds = $clientRepository->getActive()->pluck('id');
-                            return $query->whereIn('id', $clientIds);
-                        } elseif ($data['value'] === false) {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $activeIds = $clientRepository->getActive()->pluck('id');
-                            return $query->whereNotIn('id', $activeIds);
-                        }
-                        return $query;
-                    })
-                    ->native(false),
-
-                Tables\Filters\TernaryFilter::make('accepts_marketing')
-                    ->label('Согласие на маркетинг')
-                    ->boolean()
-                    ->trueLabel('Согласны')
-                    ->falseLabel('Не согласны')
-                    ->query(function (Builder $query, array $data): Builder {
-                        if ($data['value'] === true) {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $clientIds = $clientRepository->getAcceptsMarketing()->pluck('id');
-                            return $query->whereIn('id', $clientIds);
-                        } elseif ($data['value'] === false) {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $marketingIds = $clientRepository->getAcceptsMarketing()->pluck('id');
-                            return $query->whereNotIn('id', $marketingIds);
-                        }
-                        return $query;
-                    })
-                    ->native(false),
-
-                Tables\Filters\TernaryFilter::make('email_verified_at')
-                    ->label('Email подтвержден')
-                    ->boolean()
-                    ->trueLabel('Подтвержден')
-                    ->falseLabel('Не подтвержден')
-                    ->query(function (Builder $query, array $data): Builder {
-                        if ($data['value'] === true) {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $verifiedIds = $clientRepository->getVerified()->pluck('id');
-                            return $query->whereIn('id', $verifiedIds);
-                        } elseif ($data['value'] === false) {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $verifiedIds = $clientRepository->getVerified()->pluck('id');
-                            return $query->whereNotIn('id', $verifiedIds);
-                        }
-                        return $query;
-                    })
-                    ->native(false),
-
-                Tables\Filters\SelectFilter::make('customer_status')
-                    ->label('Статус клиента')
-                    ->options([
-                        'Новый' => 'Новый',
-                        'Обычный' => 'Обычный',
-                        'Постоянный' => 'Постоянный',
-                        'VIP' => 'VIP',
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (filled($data['value'])) {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $clientIds = [];
-
-                            switch ($data['value']) {
-                                case 'Новый':
-                                    $clientIds = $clientRepository->getNewClients()->pluck('id');
-                                    break;
-                                case 'Постоянный':
-                                    $clientIds = $clientRepository->getRegularClients()->pluck('id');
-                                    break;
-                                case 'VIP':
-                                    $clientIds = $clientRepository->getVipClients()->pluck('id');
-                                    break;
-                                default:
-                                    return $query;
-                            }
-
-                            return $query->whereIn('id', $clientIds);
-                        }
-                        return $query;
-                    })
-                    ->native(false),
-
-                Tables\Filters\Filter::make('high_value')
-                    ->label('Клиенты с высокими тратами')
-                    ->query(function (Builder $query): Builder {
-                        $clientRepository = app(ClientRepositoryInterface::class);
-                        $highValueIds = $clientRepository->getClientsByTotalSpent(10000)->pluck('id');
-                        return $query->whereIn('id', $highValueIds);
-                    }),
-
-                Tables\Filters\Filter::make('frequent_buyers')
-                    ->label('Частые покупатели')
-                    ->query(function (Builder $query): Builder {
-                        $clientRepository = app(ClientRepositoryInterface::class);
-                        $frequentBuyerIds = $clientRepository->getClientsByOrderCount(5)->pluck('id');
-                        return $query->whereIn('id', $frequentBuyerIds);
-                    }),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->label('Просмотр'),
-
-                Tables\Actions\EditAction::make()
-                    ->label('Редактировать'),
-
-                Tables\Actions\Action::make('verifyEmail')
-                    ->label('Подтвердить Email')
-                    ->icon('heroicon-o-check-badge')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->visible(fn (Client $record): bool => !$record->hasVerifiedEmail())
-                    ->action(function (Client $record): void {
-                        $clientRepository = app(ClientRepositoryInterface::class);
-                        $clientRepository->markEmailAsVerified($record->id);
-
-                        Notification::make()
-                            ->title('Email клиента подтвержден')
-                            ->success()
-                            ->send();
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Удалить'),
-
-                    Tables\Actions\BulkAction::make('activateClients')
-                        ->label('Активировать клиентов')
-                        ->icon('heroicon-o-check')
-                        ->color('success')
-                        ->requiresConfirmation()
-                        ->action(function ($records): void {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $count = 0;
-
-                            foreach ($records as $record) {
-                                $clientRepository->update($record->id, ['is_active' => true]);
-                                $count++;
-                            }
-
-                            Notification::make()
-                                ->title("Активировано клиентов: {$count}")
-                                ->success()
-                                ->send();
-                        }),
-
-                    Tables\Actions\BulkAction::make('deactivateClients')
-                        ->label('Деактивировать клиентов')
-                        ->icon('heroicon-o-x-mark')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->action(function ($records): void {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $count = 0;
-
-                            foreach ($records as $record) {
-                                $clientRepository->update($record->id, ['is_active' => false]);
-                                $count++;
-                            }
-
-                            Notification::make()
-                                ->title("Деактивировано клиентов: {$count}")
-                                ->success()
-                                ->send();
-                        }),
-
-                    Tables\Actions\BulkAction::make('verifyEmails')
-                        ->label('Подтвердить Email адреса')
-                        ->icon('heroicon-o-check-badge')
-                        ->color('info')
-                        ->requiresConfirmation()
-                        ->action(function ($records): void {
-                            $clientRepository = app(ClientRepositoryInterface::class);
-                            $count = 0;
-
-                            foreach ($records as $record) {
-                                if (!$record->hasVerifiedEmail()) {
-                                    $clientRepository->markEmailAsVerified($record->id);
-                                    $count++;
-                                }
-                            }
-
-                            Notification::make()
-                                ->title("Подтверждено Email адресов: {$count}")
-                                ->success()
-                                ->send();
-                        }),
-                ]),
-            ])
+            ->modifyQueryUsing(fn ($query) => $query->with('clientAddresses'))
+            ->columns(static::getTableElementsFactory()->createTableColumns())
+            ->filters(static::getTableElementsFactory()->createTableFilters())
+            ->actions(static::getTableElementsFactory()->createStandardActions())
+            ->bulkActions([static::getTableElementsFactory()->createBulkActions()])
             ->defaultSort('created_at', 'desc');
     }
 
@@ -455,7 +53,24 @@ class ClientResource extends Resource
         return [
             'index' => Pages\ListClients::route('/'),
             'create' => Pages\CreateClient::route('/create'),
+            'view' => Pages\ViewClient::route('/{record}'),
             'edit' => Pages\EditClient::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Получить фабрику полей формы
+     */
+    private static function getFormFieldFactory(): ClientFormFieldFactory
+    {
+        return app(ClientFormFieldFactory::class);
+    }
+
+    /**
+     * Получить фабрику элементов таблицы
+     */
+    private static function getTableElementsFactory(): ClientTableElementsFactory
+    {
+        return app(ClientTableElementsFactory::class);
     }
 }

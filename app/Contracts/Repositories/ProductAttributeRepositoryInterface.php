@@ -26,4 +26,14 @@ interface ProductAttributeRepositoryInterface extends BaseRepositoryInterface
      * Получить атрибуты с количеством значений
      */
     public function getWithValuesCount(): Collection;
+
+    /**
+     * Получить все атрибуты с сортировкой
+     */
+    public function getOrdered(): Collection;
+
+    /**
+     * Получить активные атрибуты с сортировкой
+     */
+    public function getActiveOrdered(): Collection;
 }

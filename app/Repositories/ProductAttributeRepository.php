@@ -44,4 +44,23 @@ class ProductAttributeRepository extends BaseRepository implements ProductAttrib
             ->orderBy('name')
             ->get();
     }
+
+    /**
+     * Получить все атрибуты с сортировкой
+     */
+    public function getOrdered(): Collection
+    {
+        return $this->model->orderBy('sort_order')->orderBy('name')->get();
+    }
+
+    /**
+     * Получить активные атрибуты с сортировкой
+     */
+    public function getActiveOrdered(): Collection
+    {
+        return $this->model->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+    }
 }

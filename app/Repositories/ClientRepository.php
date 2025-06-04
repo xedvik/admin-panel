@@ -194,4 +194,68 @@ class ClientRepository extends BaseRepository implements ClientRepositoryInterfa
         $client = $this->findOrFail($clientId);
         return $client->first_name . ' ' . $client->last_name;
     }
+
+    /**
+     * Получить основной адрес доставки клиента
+     */
+    public function getDefaultShippingAddress(int $clientId): ?array
+    {
+        $client = $this->findOrFail($clientId);
+        $address = $client->clientAddresses()
+            ->where('type', 'shipping')
+            ->where('is_default', true)
+            ->first();
+
+        if (!$address) {
+            $address = $client->clientAddresses()
+                ->where('type', 'shipping')
+                ->first();
+        }
+
+        return $address ? $address->toArray() : null;
+    }
+
+    /**
+     * Получить основной адрес оплаты клиента
+     */
+    public function getDefaultBillingAddress(int $clientId): ?array
+    {
+        $client = $this->findOrFail($clientId);
+        $address = $client->clientAddresses()
+            ->where('type', 'billing')
+            ->where('is_default', true)
+            ->first();
+
+        if (!$address) {
+            $address = $client->clientAddresses()
+                ->where('type', 'billing')
+                ->first();
+        }
+
+        return $address ? $address->toArray() : null;
+    }
+
+    /**
+     * Получить все адреса доставки клиента
+     */
+    public function getShippingAddresses(int $clientId): array
+    {
+        $client = $this->findOrFail($clientId);
+        return $client->clientAddresses()
+            ->where('type', 'shipping')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Получить все адреса оплаты клиента
+     */
+    public function getBillingAddresses(int $clientId): array
+    {
+        $client = $this->findOrFail($clientId);
+        return $client->clientAddresses()
+            ->where('type', 'billing')
+            ->get()
+            ->toArray();
+    }
 }

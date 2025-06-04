@@ -20,7 +20,6 @@ class Client extends Model
         'phone',
         'date_of_birth',
         'gender',
-        'addresses',
         'accepts_marketing',
         'email_verified_at',
         'is_active',
@@ -34,7 +33,6 @@ class Client extends Model
         'accepts_marketing' => 'boolean',
         'is_active' => 'boolean',
         'email_verified_at' => 'timestamp',
-        'addresses' => 'array',
     ];
 
     /**
@@ -46,19 +44,10 @@ class Client extends Model
     }
 
     /**
-     * Проверить подтвержден ли email
+     * Получить адреса клиента
      */
-    public function hasVerifiedEmail(): bool
+    public function clientAddresses(): HasMany
     {
-        return !is_null($this->email_verified_at);
-    }
-
-    /**
-     * Получить полное имя клиента
-     */
-    public function getFullNameAttribute(): string
-    {
-        return app(\App\Contracts\Repositories\ClientRepositoryInterface::class)
-            ->getClientFullName($this->id);
+        return $this->hasMany(ClientAddress::class);
     }
 }

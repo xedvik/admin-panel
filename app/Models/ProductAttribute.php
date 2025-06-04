@@ -57,32 +57,4 @@ class ProductAttribute extends Model
     {
         return $this->hasMany(ProductAttributeValue::class, 'attribute_id');
     }
-
-    /**
-     * Scope для активных атрибутов
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    /**
-     * Scope для сортировки
-     */
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('sort_order')->orderBy('name');
-    }
-
-    /**
-     * Получить варианты для select типа
-     */
-    public function getSelectOptions(): array
-    {
-        if ($this->type !== 'select' || !$this->options) {
-            return [];
-        }
-
-        return array_combine($this->options, $this->options);
-    }
 }
