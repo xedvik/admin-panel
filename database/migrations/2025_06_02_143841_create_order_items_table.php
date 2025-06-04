@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained('products')->cascadeOnDelete(); // товар
             $table->string('product_name'); // название товара
             $table->string('product_sku'); // артикул товара в момент заказа
+            $table->foreign('product_sku')->references('sku')->on('products')->cascadeOnDelete();
             $table->integer('product_price'); // цена товара в момент заказа
             $table->integer('quantity'); // количество товара
             $table->integer('total_price'); // сумма товара
