@@ -25,7 +25,10 @@ return new class extends Migration
             $table->boolean('continue_selling_when_out_of_stock')->default(false); // продолжать продавать товар когда на складе нет
             $table->decimal('weight', 8, 2)->nullable(); // вес товара
             $table->string('weight_unit')->default('kg'); // единица измерения веса
-            $table->json('images')->nullable(); // массив ссылок на изображения
+
+
+            $table->jsonb('images')->nullable(); // массив ссылок на изображения
+
             $table->string('meta_title')->nullable(); // seo
             $table->text('meta_description')->nullable(); // seo
             $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete(); // категория товара

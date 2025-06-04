@@ -20,7 +20,9 @@ return new class extends Migration
             $table->integer('product_price'); // цена товара в момент заказа
             $table->integer('quantity'); // количество товара
             $table->integer('total_price'); // сумма товара
-            $table->text('product_variant')->nullable(); // для хранения размера, цвета и т.д.
+
+            $table->jsonb('product_variant')->nullable(); // для хранения размера, цвета и т.д.
+
             $table->timestamps();
 
             $table->index(['order_id', 'product_id']);

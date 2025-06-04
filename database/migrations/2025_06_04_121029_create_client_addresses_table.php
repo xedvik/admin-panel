@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained('clients')->cascadeOnDelete();
 
             // Основная информация адреса
-            $table->enum('type', ['shipping', 'billing'])->default('shipping');
+            $table->string('type')->default('shipping'); // Тип адреса: shipping или billing
             $table->string('label')->nullable(); // Название адреса (Дом, Офис, Дача)
             $table->boolean('is_default')->default(false);
 

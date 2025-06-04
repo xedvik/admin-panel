@@ -31,6 +31,7 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'product_price' => 'integer',
         'total_price' => 'integer',
+        'product_variant' => 'array',
     ];
 
     /**

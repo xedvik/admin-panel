@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // название атрибута (Цвет, Размер, Материал)
             $table->string('slug')->unique(); // slug для программного использования
-            $table->enum('type', ['text', 'number', 'select', 'boolean', 'string', 'date' ])->default('text'); // тип атрибута
+            $table->string('type')->default('text'); // тип атрибута: text, number, select, boolean, string, date
             $table->text('description')->nullable(); // описание атрибута
-            $table->json('options')->nullable(); // опции для select (массив значений)
+            $table->jsonb('options')->nullable(); // опции для select (массив значений)
             $table->boolean('is_required')->default(false); // обязательный ли атрибут
             $table->boolean('is_active')->default(true); // активный ли атрибут
             $table->boolean('is_filterable')->default(true); // фильтруемый ли атрибут

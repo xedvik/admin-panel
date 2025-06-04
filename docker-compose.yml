@@ -24,29 +24,32 @@ services:
         volumes:
             - ./:/var/www/html:delegated
         depends_on:
-            - mysql
+            - postgres
         environment:
-            - DB_HOST=mysql
-            - DB_PORT=3306
+            - DB_HOST=postgres
+            - DB_PORT=5432
             - DB_DATABASE=laravel-admin-client
-            - DB_USERNAME=root
+            - DB_USERNAME=postgres
             - DB_PASSWORD=password
         user: "${UID:-1000}:${GID:-1000}"
 
-    mysql:
-        image: mysql:8.0
-        container_name: laravel_mysql_admin_client
+    postgres:
+        image: postgres:15
+        container_name: laravel_postgres_admin_client
         restart: unless-stopped
         environment:
-            MYSQL_ROOT_PASSWORD: password
-            MYSQL_DATABASE: laravel-admin-client
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: laravel-admin-client
         ports:
-            - "3307:3306"
+            - "5432:5432"
         volumes:
-            - mysql_data_product:/var/lib/mysql
-
-
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD", "pg_isready", "-U", "postgres"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
 volumes:
-    mysql_data_product:
+    postgres_data:
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProductResource\Pages;
 
 use App\Filament\Resources\ProductResource;
+use App\Services\Forms\AttributeFormFieldFactory;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
@@ -70,11 +71,11 @@ class ViewProduct extends ViewRecord
 
                 Infolists\Components\Section::make('Атрибуты товара')
                     ->schema(function ($record) {
-                        $fieldFactory = app(\App\Services\AttributeFormFieldFactory::class);
+                        $fieldFactory = app(AttributeFormFieldFactory::class);
                         return $fieldFactory->createInfolistEntriesForProduct($record->id);
                     })
                     ->visible(function ($record) {
-                        $fieldFactory = app(\App\Services\AttributeFormFieldFactory::class);
+                        $fieldFactory = app(AttributeFormFieldFactory::class);
                         $entries = $fieldFactory->createInfolistEntriesForProduct($record->id);
                         return !empty($entries);
                     }),

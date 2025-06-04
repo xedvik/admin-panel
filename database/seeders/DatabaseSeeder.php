@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
     {
         // Создаем базовые настройки
         $this->call(SettingsSeeder::class);
+        $this->call(ProductAttributeSeeder::class);
 
         // Создаем админа
         $this->seederService->createAdmin();

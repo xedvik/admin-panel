@@ -162,9 +162,9 @@ class DatabaseSeederService
     private function updateOrderTotals(Order $order): void
     {
         $subtotal = $order->orderItems()->sum('total_price');
-        $taxAmount = $subtotal * 0.2;
+        $taxAmount = (int)($subtotal * 0.2);
         $shippingAmount = rand(0, 500);
-        $discountAmount = rand(0, $subtotal * 0.1);
+        $discountAmount = rand(0, (int)($subtotal * 0.1));
         $totalAmount = $subtotal + $taxAmount + $shippingAmount - $discountAmount;
 
         $order->update([
