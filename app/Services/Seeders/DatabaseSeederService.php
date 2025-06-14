@@ -14,6 +14,7 @@ use App\Models\Product;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Promotion;
+use App\Models\ClientStatus;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Collection;
 
@@ -98,11 +99,13 @@ class DatabaseSeederService
     {
         $clients = collect();
 
+        $regularStatus = ClientStatus::where('name', 'regular')->first();
+
         // Обычные клиенты
         $regularClients = Client::factory(30)
             ->active()
             ->verified()
-            ->create();
+            ->create(['client_status_id' => $regularStatus?->id]);
         $clients = $clients->merge($regularClients);
 
         // Клиенты с несколькими адресами
@@ -110,7 +113,7 @@ class DatabaseSeederService
             ->active()
             ->verified()
             ->withMultipleAddresses()
-            ->create();
+            ->create(['client_status_id' => $regularStatus?->id]);
         $clients = $clients->merge($multiAddressClients);
 
         return $clients;
