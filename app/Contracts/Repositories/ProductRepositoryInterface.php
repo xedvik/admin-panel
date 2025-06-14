@@ -13,10 +13,6 @@ interface ProductRepositoryInterface extends BaseRepositoryInterface
      */
     public function getActive(): Collection;
 
-    /**
-     * Получить только опубликованные товары
-     */
-    public function getPublished(): Collection;
 
     /**
      * Получить только рекомендуемые товары
@@ -28,15 +24,6 @@ interface ProductRepositoryInterface extends BaseRepositoryInterface
      */
     public function getInStock(): Collection;
 
-    /**
-     * Получить товары по категории
-     */
-    public function getByCategory(int $categoryId): Collection;
-
-    /**
-     * Получить товары по категории с пагинацией
-     */
-    public function getByCategoryPaginated(int $categoryId, int $perPage = 15): LengthAwarePaginator;
 
     /**
      * Найти товар по SKU

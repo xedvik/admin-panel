@@ -51,8 +51,7 @@ abstract class BaseRepository implements BaseRepositoryInterface
 
     public function delete(int $id): bool
     {
-        $model = $this->findOrFail($id);
-        return $model->delete();
+        return $this->model->destroy($id);
     }
 
     public function deleteWhere(array $conditions): int

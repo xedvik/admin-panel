@@ -28,6 +28,8 @@ use App\Repositories\OrderItemRepository;
 use App\Repositories\SettingRepository;
 use App\Repositories\ProductAttributeRepository;
 use App\Repositories\ProductAttributeValueRepository;
+use App\Repositories\PromotionRepository;
+use App\Contracts\Repositories\PromotionRepositoryInterface;
 
 // Модели
 use App\Models\User;
@@ -94,6 +96,8 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(ClientAddressRepositoryInterface::class, function ($app) {
             return new ClientAddressRepository($app->make(ClientAddress::class));
         });
+
+        $this->app->bind(PromotionRepositoryInterface::class, PromotionRepository::class);
     }
 
     /**

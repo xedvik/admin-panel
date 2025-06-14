@@ -18,24 +18,26 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         $this->attributeValueRepository = $attributeValueRepository;
     }
 
+    /**
+     * Получить активные товары
+     */
     public function getActive(): Collection
     {
         return $this->model->where('is_active', true)->get();
     }
 
-    public function getPublished(): Collection
-    {
-        return $this->model->where('is_active', true)
-                          ->whereNotNull('published_at')
-                          ->where('published_at', '<=', now())
-                          ->get();
-    }
 
+    /**
+     * Получить популярные товары
+     */
     public function getFeatured(): Collection
     {
         return $this->model->where('is_featured', true)->get();
     }
 
+    /**
+     * Получить товары в наличии
+     */
     public function getInStock(): Collection
     {
         return $this->model->where(function ($query) {
@@ -45,31 +47,35 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         })->get();
     }
 
-    public function getByCategory(int $categoryId): Collection
-    {
-        return $this->model->where('category_id', $categoryId)->get();
-    }
 
-    public function getByCategoryPaginated(int $categoryId, int $perPage = 15): LengthAwarePaginator
-    {
-        return $this->model->where('category_id', $categoryId)->paginate($perPage);
-    }
 
+    /**
+     * Найти товар по SKU
+     */
     public function findBySku(string $sku): ?Product
     {
         return $this->model->where('sku', $sku)->first();
     }
 
+    /**
+     * Найти товар по slug
+     */
     public function findBySlug(string $slug): ?Product
     {
         return $this->model->where('slug', $slug)->first();
     }
 
+    /**
+     * Поиск товаров по названию
+     */
     public function searchByName(string $search): Collection
     {
         return $this->model->where('name', 'like', "%{$search}%")->get();
     }
 
+    /**
+     * Проверить, есть ли товар в наличии
+     */
     public function isInStock(int $productId): bool
     {
         $product = $this->find($productId);
@@ -89,6 +95,9 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         return $product->continue_selling_when_out_of_stock;
     }
 
+    /**
+     * Обновить остатки товара
+     */
     public function updateStock(int $productId, int $quantity): Product
     {
         $product = $this->findOrFail($productId);
@@ -97,6 +106,9 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         return $product->fresh();
     }
 
+    /**
+     * Уменьшить остатки товара
+     */
     public function decrementStock(int $productId, int $quantity): Product
     {
         $product = $this->findOrFail($productId);
@@ -109,6 +121,9 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         return $product->fresh();
     }
 
+    /**
+     * Увеличить остатки товара
+     */
     public function incrementStock(int $productId, int $quantity): Product
     {
         $product = $this->findOrFail($productId);
@@ -121,6 +136,9 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         return $product->fresh();
     }
 
+    /**
+     * Получить товары с низким остатком
+     */
     public function getLowStockProducts(int $threshold = 10): Collection
     {
         return $this->model->where('track_quantity', true)
@@ -129,6 +147,9 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
                           ->get();
     }
 
+    /**
+     * Получить товары без остатков
+     */
     public function getOutOfStockProducts(): Collection
     {
         return $this->model->where('track_quantity', true)
@@ -138,15 +159,7 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
     }
 
     /**
-     * Получить товары с категориями
-     */
-    // public function getWithCategories(): Collection
-    // {
-    //     return $this->model->with('category')->get();
-    // }
-
-    /**
-     * Получить популярные товары (по количеству заказов)
+     * Получить популярные товары
      */
     public function getPopularProducts(int $limit = 10): Collection
     {
@@ -156,27 +169,6 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
                           ->get();
     }
 
-    /**
-     * Получить товары со скидкой
-     */
-    // public function getDiscountedProducts(): Collection
-    // {
-    //     return $this->model->whereNotNull('compare_price')
-    //                       ->whereColumn('compare_price', '>', 'price')
-    //                       ->get();
-    // }
-
-    /**
-     * Поиск товаров по нескольким полям
-     */
-    // public function searchProducts(string $search): Collection
-    // {
-    //     return $this->model->where(function ($query) use ($search) {
-    //         $query->where('name', 'like', "%{$search}%")
-    //               ->orWhere('description', 'like', "%{$search}%")
-    //               ->orWhere('sku', 'like', "%{$search}%");
-    //     })->get();
-    // }
 
     /**
      * Получить query builder для товаров

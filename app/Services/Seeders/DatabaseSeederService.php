@@ -13,6 +13,7 @@ use App\Models\Client;
 use App\Models\Product;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Promotion;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Collection;
 
@@ -187,6 +188,7 @@ class DatabaseSeederService
             'clients' => Client::count(),
             'orders' => Order::count(),
             'order_items' => OrderItem::count(),
+            'promotions' => Promotion::count(),
         ];
     }
 }

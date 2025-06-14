@@ -29,6 +29,9 @@ class DatabaseSeeder extends Seeder
         // Создаем товары для категорий
         $this->seederService->createProducts();
 
+        // Создаем акции
+        $this->call(PromotionSeeder::class);
+
         // Создаем клиентов
         $clients = $this->seederService->createClients();
 
@@ -42,6 +45,7 @@ class DatabaseSeeder extends Seeder
         $this->command->info('- Настроек: базовые настройки сайта');
         $this->command->info('- Категорий: ' . $stats['categories']);
         $this->command->info('- Товаров: ' . $stats['products']);
+        $this->command->info('- Акций: ' . $stats['promotions']);
         $this->command->info('- Клиентов: ' . $stats['clients']);
         $this->command->info('- Заказов: ' . $stats['orders']);
         $this->command->info('- Позиций заказов: ' . $stats['order_items']);

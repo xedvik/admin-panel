@@ -32,7 +32,7 @@ return new class extends Migration
             $table->string('meta_title')->nullable(); // seo
             $table->text('meta_description')->nullable(); // seo
             $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete(); // категория товара
-            $table->boolean('is_active')->default(true);
+            $table->boolean('is_active')->default(true); // активен ли товар
             $table->boolean('is_featured')->default(false); // рекомендуемый товар
             $table->timestamp('published_at')->nullable(); // дата публикации товара
             $table->timestamps();
