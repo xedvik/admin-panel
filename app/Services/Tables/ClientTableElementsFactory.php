@@ -50,12 +50,9 @@ class ClientTableElementsFactory
                     return "Доставка: {$shippingCount}, Оплата: {$billingCount}";
                 }),
 
-            Tables\Columns\TextColumn::make('customer_status')
+            Tables\Columns\TextColumn::make('status.label')
                 ->label('Статус')
                 ->badge()
-                ->getStateUsing(function (Client $record): string {
-                    return $this->clientRepository->getClientStatus($record->id);
-                })
                 ->color(fn (string $state): string => match ($state) {
                     'VIP' => 'success',
                     'Постоянный' => 'warning',
@@ -116,9 +113,7 @@ class ClientTableElementsFactory
             $this->createActiveFilter(),
             $this->createMarketingFilter(),
             $this->createEmailVerifiedFilter(),
-            $this->createCustomerStatusFilter(),
-            $this->createHighValueFilter(),
-            $this->createFrequentBuyersFilter(),
+            $this->createStatusFilter(),
         ];
     }
 
@@ -194,65 +189,11 @@ class ClientTableElementsFactory
     /**
      * Создать фильтр статуса клиента
      */
-    public function createCustomerStatusFilter(): Tables\Filters\SelectFilter
+    public function createStatusFilter(): Tables\Filters\SelectFilter
     {
-        return Tables\Filters\SelectFilter::make('customer_status')
+        return Tables\Filters\SelectFilter::make('client_status_id')
             ->label('Статус клиента')
-            ->options([
-                'Новый' => 'Новый',
-                'Обычный' => 'Обычный',
-                'Постоянный' => 'Постоянный',
-                'VIP' => 'VIP',
-            ])
-            ->query(function (Builder $query, array $data): Builder {
-                if (filled($data['value'])) {
-                    $clientIds = [];
-
-                    switch ($data['value']) {
-                        case 'Новый':
-                            $clientIds = $this->clientRepository->getNewClients()->pluck('id');
-                            break;
-                        case 'Постоянный':
-                            $clientIds = $this->clientRepository->getRegularClients()->pluck('id');
-                            break;
-                        case 'VIP':
-                            $clientIds = $this->clientRepository->getVipClients()->pluck('id');
-                            break;
-                        default:
-                            return $query;
-                    }
-
-                    return $query->whereIn('id', $clientIds);
-                }
-                return $query;
-            })
-            ->native(false);
-    }
-
-    /**
-     * Создать фильтр клиентов с высокими тратами
-     */
-    public function createHighValueFilter(): Tables\Filters\Filter
-    {
-        return Tables\Filters\Filter::make('high_value')
-            ->label('Клиенты с высокими тратами')
-            ->query(function (Builder $query): Builder {
-                $highValueIds = $this->clientRepository->getClientsByTotalSpent(10000)->pluck('id');
-                return $query->whereIn('id', $highValueIds);
-            });
-    }
-
-    /**
-     * Создать фильтр частых покупателей
-     */
-    public function createFrequentBuyersFilter(): Tables\Filters\Filter
-    {
-        return Tables\Filters\Filter::make('frequent_buyers')
-            ->label('Частые покупатели')
-            ->query(function (Builder $query): Builder {
-                $frequentBuyerIds = $this->clientRepository->getClientsByOrderCount(5)->pluck('id');
-                return $query->whereIn('id', $frequentBuyerIds);
-            });
+            ->relationship('status', 'label');
     }
 
     /**

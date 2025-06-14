@@ -79,6 +79,24 @@ class ViewProduct extends ViewRecord
                         $entries = $fieldFactory->createInfolistEntriesForProduct($record->id);
                         return !empty($entries);
                     }),
+
+                Infolists\Components\Section::make('Акции')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('promotions')
+                            ->label('Активные акции')
+                            ->getStateUsing(function ($record) {
+                                if (!$record) return '';
+                                return $record->promotions
+                                    ->where('is_active', true)
+                                    ->map(function ($promotion) {
+                                        $type = $promotion->discount_type === 'percentage' ? '%' : '₽';
+                                        return $promotion->name . ' (' . $promotion->discount_value . $type . ')';
+                                    })
+                                    ->implode(', ');
+                            })
+                            ->visible(fn ($record) => $record->promotions->where('is_active', true)->isNotEmpty()),
+                    ])
+                    ->visible(fn ($record) => $record->promotions->where('is_active', true)->isNotEmpty()),
             ]);
     }
 }

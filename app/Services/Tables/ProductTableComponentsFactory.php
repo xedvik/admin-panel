@@ -60,6 +60,18 @@ class ProductTableComponentsFactory
                 ->falseIcon('heroicon-o-star')
                 ->trueColor('warning'),
 
+            Tables\Columns\TextColumn::make('promotions')
+                ->label('Акции')
+                ->getStateUsing(function (?Product $record) {
+                    if (!$record) return '';
+                    return $record->promotions
+                        ->where('is_active', true)
+                        ->pluck('name')
+                        ->implode(', ');
+                })
+                ->limit(40)
+                ->toggleable(isToggledHiddenByDefault: false),
+
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Создан')
                 ->dateTime('d.m.Y H:i')

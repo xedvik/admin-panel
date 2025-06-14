@@ -49,6 +49,11 @@ class ClientFormFieldFactory
             Forms\Components\TextInput::make('company')
                 ->label('Компания')
                 ->columnSpanFull(),
+
+            Forms\Components\Select::make('client_status_id')
+                ->label('Статус')
+                ->relationship('status', 'label')
+                ->required(),
         ];
     }
 

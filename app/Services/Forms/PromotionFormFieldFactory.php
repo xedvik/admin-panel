@@ -30,6 +30,7 @@ class PromotionFormFieldFactory
                         ->schema([
                             $this->createActiveField(),
                             $this->createProductsField(),
+                            $this->createClientStatusesField(),
                         ])
                         ->columnSpan(1),
                 ]),
@@ -97,6 +98,19 @@ class PromotionFormFieldFactory
             ->label('Товары')
             ->multiple()
             ->relationship('products', 'name')
+            ->preload()
+            ->searchable();
+    }
+
+    /**
+     * Создать поле выбора статусов клиентов
+     */
+    private function createClientStatusesField(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('clientStatuses')
+            ->label('Статусы клиентов')
+            ->multiple()
+            ->relationship('clientStatuses', 'label')
             ->preload()
             ->searchable();
     }

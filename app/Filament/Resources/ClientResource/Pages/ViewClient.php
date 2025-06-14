@@ -80,12 +80,8 @@ class ViewClient extends ViewRecord
 
                 Infolists\Components\Section::make('Статистика')
                     ->schema([
-                        Infolists\Components\TextEntry::make('customer_status')
+                        Infolists\Components\TextEntry::make('status.label')
                             ->label('Статус клиента')
-                            ->getStateUsing(function ($record) {
-                                $clientRepository = app(\App\Contracts\Repositories\ClientRepositoryInterface::class);
-                                return $clientRepository->getClientStatus($record->id);
-                            })
                             ->badge()
                             ->color(fn (string $state): string => match ($state) {
                                 'VIP' => 'success',

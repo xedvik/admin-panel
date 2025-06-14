@@ -33,39 +33,9 @@ interface ClientRepositoryInterface extends BaseRepositoryInterface
     public function search(string $search): Collection;
 
     /**
-     * Получить клиентов VIP статуса
-     */
-    public function getVipClients(): Collection;
-
-    /**
-     * Получить постоянных клиентов
-     */
-    public function getRegularClients(): Collection;
-
-    /**
-     * Получить новых клиентов
-     */
-    public function getNewClients(): Collection;
-
-    /**
-     * Получить клиентов по общей сумме покупок
-     */
-    public function getClientsByTotalSpent(int $minAmount): Collection;
-
-    /**
-     * Получить клиентов по количеству заказов
-     */
-    public function getClientsByOrderCount(int $minOrders): Collection;
-
-    /**
      * Обновить статус email верификации
      */
     public function markEmailAsVerified(int $clientId): Client;
-
-    /**
-     * Получить статус клиента (Новый, Обычный, Постоянный, VIP)
-     */
-    public function getClientStatus(int $clientId): string;
 
     /**
      * Получить количество заказов клиента

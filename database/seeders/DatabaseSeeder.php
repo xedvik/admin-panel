@@ -32,6 +32,9 @@ class DatabaseSeeder extends Seeder
         // Создаем акции
         $this->call(PromotionSeeder::class);
 
+        // Создаем статусы клиентов
+        $this->call(ClientStatusSeeder::class);
+
         // Создаем клиентов
         $clients = $this->seederService->createClients();
 

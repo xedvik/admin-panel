@@ -192,6 +192,24 @@ class ProductFormFieldFactory
     }
 
     /**
+     * Создать секцию выбора акций
+     */
+    public function createPromotionsSection(): \Filament\Forms\Components\Section
+    {
+        return \Filament\Forms\Components\Section::make('Акции')
+            ->schema([
+                \Filament\Forms\Components\Select::make('promotions')
+                    ->label('Выберите акции')
+                    ->multiple()
+                    ->relationship('promotions', 'name')
+                    ->preload()
+                    ->searchable(),
+            ])
+            ->collapsed()
+            ->columnSpanFull();
+    }
+
+    /**
      * Создать основной макет формы
      */
     public function createMainLayout(): array
@@ -225,6 +243,7 @@ class ProductFormFieldFactory
 
             $this->createSeoFields(),
             $this->createAttributesSection(),
+            $this->createPromotionsSection(),
         ];
     }
 }

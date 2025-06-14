@@ -23,6 +23,8 @@ return new class extends Migration
             $table->boolean('accepts_marketing')->default(false); // согласие на получение маркетинговых материалов
             $table->timestamp('email_verified_at')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->unsignedBigInteger('client_status_id')->nullable()->index();
+            $table->foreign('client_status_id')->references('id')->on('client_statuses')->nullOnDelete();
             $table->timestamps();
 
             $table->index('email');
