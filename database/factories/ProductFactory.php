@@ -20,8 +20,6 @@ class ProductFactory extends Factory
     {
         $name = $this->faker->words(3, true);
         $price = $this->faker->numberBetween(100, 100000); // цена в рублях (int)
-        $comparePrice = $this->faker->boolean(30) ? $this->faker->numberBetween($price + 100, (int)($price * 1.5)) : null;
-
         return [
             'name' => $name, // название товара
             'slug' => Str::slug($name), // slug товара
@@ -29,8 +27,7 @@ class ProductFactory extends Factory
             'short_description' => $this->faker->sentence, // краткое описание товара
             'sku' => $this->faker->unique()->numerify('SKU-######'), // артикул товара
             'price' => $price, // цена товара в рублях
-            'final_price' => $this->faker->numberBetween(100, 10000), // цена товара после скидки в рублях
-            'compare_price' => $comparePrice, // цена до скидки в рублях
+            'final_price' => $price, // цена товара после скидки в рублях
             'stock_quantity' => $this->faker->numberBetween(0, 100), // количество товара на складе
             'track_quantity' => $this->faker->boolean(80), // отслеживать количество товара на складе
             'continue_selling_when_out_of_stock' => $this->faker->boolean(20), // продолжать продавать товар когда на складе нет

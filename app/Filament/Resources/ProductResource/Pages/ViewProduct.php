@@ -39,22 +39,17 @@ class ViewProduct extends ViewRecord
                 Infolists\Components\Section::make('Ценообразование и остатки')
                     ->schema([
                         Infolists\Components\TextEntry::make('price')
-                            ->label('Цена')
+                            ->label('Цена до акции')
                             ->money('RUB'),
-
-                        Infolists\Components\TextEntry::make('compare_price')
-                            ->label('Цена до скидки')
-                            ->money('RUB')
-                            ->visible(fn ($record) => $record->compare_price),
-
+                        Infolists\Components\TextEntry::make('final_price')
+                            ->label('Цена с акцией')
+                            ->money('RUB'),
                         Infolists\Components\TextEntry::make('stock_quantity')
                             ->label('Количество на складе')
                             ->visible(fn ($record) => $record->track_quantity),
-
                         Infolists\Components\IconEntry::make('is_active')
                             ->label('Активен')
                             ->boolean(),
-
                         Infolists\Components\IconEntry::make('is_featured')
                             ->label('Рекомендуемый')
                             ->boolean(),

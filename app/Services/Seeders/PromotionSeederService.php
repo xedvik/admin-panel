@@ -34,6 +34,8 @@ class PromotionSeederService
             if (fake()->boolean(70)) {
                 $randomPromotion = $createdPromotions->random();
                 $product->promotions()->attach($randomPromotion->id);
+                // Пересчитываем финальную цену с учетом акции
+                app(\App\Services\ProductPriceService::class)->updateProductFinalPrice($product->fresh());
             }
         }
     }

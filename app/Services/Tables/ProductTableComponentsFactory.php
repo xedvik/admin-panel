@@ -20,6 +20,11 @@ class ProductTableComponentsFactory
     public function createTableColumns(): array
     {
         return [
+            Tables\Columns\TextColumn::make('id')
+                ->label('ID')
+                ->sortable()
+                ->badge()
+                ->color('gray'),
             Tables\Columns\ImageColumn::make('main_image')
                 ->label('Фото')
                 ->getStateUsing(fn (?Product $record) => $record ? $this->productRepository->getMainImage($record) : null)
@@ -38,8 +43,9 @@ class ProductTableComponentsFactory
                 ->badge()
                 ->color('gray'),
 
-            Tables\Columns\TextColumn::make('price')
-                ->label('Цена')
+
+            Tables\Columns\TextColumn::make('final_price')
+                ->label('Итоговая цена')
                 ->money('RUB')
                 ->sortable(),
 

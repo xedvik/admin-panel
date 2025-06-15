@@ -85,18 +85,16 @@ class ProductFormFieldFactory
     {
         return [
             Forms\Components\TextInput::make('price')
-                ->label('Цена (руб.)')
+                ->label('Цена до акции (руб.)')
                 ->required()
                 ->numeric()
                 ->minValue(0)
                 ->prefix('₽'),
-
-            Forms\Components\TextInput::make('compare_price')
-                ->label('Цена до скидки (руб.)')
+            Forms\Components\TextInput::make('final_price')
+                ->label('Цена с акцией (руб.)')
+                ->disabled()
                 ->numeric()
-                ->minValue(0)
-                ->prefix('₽')
-                ->helperText('Зачеркнутая цена для показа скидки'),
+                ->prefix('₽'),
         ];
     }
 

@@ -23,7 +23,6 @@ class Product extends Model
         'short_description',
         'sku',
         'price',
-        'compare_price',
         'stock_quantity',
         'track_quantity',
         'continue_selling_when_out_of_stock',
@@ -44,7 +43,6 @@ class Product extends Model
      */
     protected $casts = [
         'price' => 'integer',
-        'compare_price' => 'integer',
         'weight' => 'decimal:2',
         'stock_quantity' => 'integer',
         'is_active' => 'boolean',
