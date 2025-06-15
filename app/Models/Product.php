@@ -57,6 +57,15 @@ class Product extends Model
     ];
 
     /**
+     * Мутатор для поля final_price
+     * Если final_price не установлен, используем оригинальную цену
+     */
+    public function setFinalPriceAttribute($value)
+    {
+        $this->attributes['final_price'] = $value ?? $this->price;
+    }
+
+    /**
      * Получить категорию товара
      */
     public function category(): BelongsTo
@@ -86,7 +95,17 @@ class Product extends Model
     public function promotions(): BelongsToMany
     {
         return $this->belongsToMany(Promotion::class)
+            ->using(\App\Models\ProductPromotion::class)
             ->withTimestamps();
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($product) {
+            if (is_null($product->final_price)) {
+                $product->final_price = $product->price;
+            }
+        });
     }
 
 }
