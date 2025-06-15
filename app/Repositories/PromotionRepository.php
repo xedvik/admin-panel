@@ -2,19 +2,23 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\PromotionRepositoryInterface;
 use App\Models\Promotion;
 use App\Models\Product;
-use App\Contracts\Repositories\PromotionRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 class PromotionRepository implements PromotionRepositoryInterface
 {
+    public function __construct(
+        private Promotion $model
+    ) {}
+
     /**
      * Получить все акции
      */
     public function getAll(): Collection
     {
-        return Promotion::all();
+        return $this->model->all();
     }
 
     /**
@@ -22,7 +26,7 @@ class PromotionRepository implements PromotionRepositoryInterface
      */
     public function findById(int $id): ?Promotion
     {
-        return Promotion::find($id);
+        return $this->model->find($id);
     }
 
     /**
@@ -30,7 +34,7 @@ class PromotionRepository implements PromotionRepositoryInterface
      */
     public function create(array $data): Promotion
     {
-        return Promotion::create($data);
+        return $this->model->create($data);
     }
 
     /**
@@ -54,12 +58,25 @@ class PromotionRepository implements PromotionRepositoryInterface
      */
     public function getActivePromotionsForProduct(int $productId): Collection
     {
-        return Product::find($productId)
-            ->promotions()
+        $now = now();
+        return $this->model->whereHas('products', fn($q) => $q->where('products.id', $productId))
             ->where('is_active', true)
-            ->where('start_date', '<=', now())
-            ->where('end_date', '>=', now())
+            ->where('start_date', '<=', $now)
+            ->where('end_date', '>=', $now)
             ->get();
+    }
+
+    /**
+     * Получить активную акцию для товара
+     */
+    public function getActivePromotionForProduct(Product $product): ?Promotion
+    {
+        $now = now();
+        return $product->promotions()
+            ->where('is_active', true)
+            ->where('start_date', '<=', $now)
+            ->where('end_date', '>=', $now)
+            ->first();
     }
 
     /**
@@ -67,10 +84,12 @@ class PromotionRepository implements PromotionRepositoryInterface
      */
     public function isActive(Promotion $promotion): bool
     {
+        if (!$promotion->is_active) {
+            return false;
+        }
+
         $now = now();
-        return $promotion->is_active &&
-               $promotion->start_date <= $now &&
-               $promotion->end_date >= $now;
+        return $promotion->start_date <= $now && $promotion->end_date >= $now;
     }
 
     /**

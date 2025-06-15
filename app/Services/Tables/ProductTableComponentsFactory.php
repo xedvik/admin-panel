@@ -70,6 +70,7 @@ class ProductTableComponentsFactory
                         ->implode(', ');
                 })
                 ->limit(40)
+                ->sortable(false)
                 ->toggleable(isToggledHiddenByDefault: false),
 
             Tables\Columns\TextColumn::make('created_at')

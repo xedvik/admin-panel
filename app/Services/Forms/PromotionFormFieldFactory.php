@@ -30,7 +30,6 @@ class PromotionFormFieldFactory
                         ->schema([
                             $this->createActiveField(),
                             $this->createProductsField(),
-                            $this->createClientStatusesField(),
                         ])
                         ->columnSpan(1),
                 ]),
@@ -99,19 +98,29 @@ class PromotionFormFieldFactory
             ->multiple()
             ->relationship('products', 'name')
             ->preload()
-            ->searchable();
-    }
+            ->searchable()
+            ->rule(function () {
+                return function ($attribute, $value, $fail) {
+                    $promotionId = request()->route('record'); // id редактируемой акции, если есть
+                    $productIds = $value ?? [];
 
-    /**
-     * Создать поле выбора статусов клиентов
-     */
-    private function createClientStatusesField(): Forms\Components\Select
-    {
-        return Forms\Components\Select::make('clientStatuses')
-            ->label('Статусы клиентов')
-            ->multiple()
-            ->relationship('clientStatuses', 'label')
-            ->preload()
-            ->searchable();
+                    if (empty($productIds)) {
+                        return;
+                    }
+
+                    // Проверяем для каждого выбранного товара
+                    foreach ($productIds as $productId) {
+                        $query = \App\Models\Promotion::whereHas('products', fn($q) => $q->where('products.id', $productId))
+                            ->where('is_active', true);
+                        if ($promotionId) {
+                            $query->where('id', '!=', $promotionId);
+                        }
+                        if ($query->exists()) {
+                            $fail('Для выбранного товара уже существует активная акция.');
+                            return;
+                        }
+                    }
+                };
+            });
     }
 }

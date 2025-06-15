@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Services\ProductPriceService;
 
 class Product extends Model
 {
@@ -35,6 +36,7 @@ class Product extends Model
         'is_active',
         'is_featured',
         'published_at',
+        'final_price',
     ];
 
     /**
@@ -51,6 +53,7 @@ class Product extends Model
         'continue_selling_when_out_of_stock' => 'boolean',
         'images' => 'array',
         'published_at' => 'datetime',
+        'final_price' => 'integer',
     ];
 
     /**
@@ -85,4 +88,5 @@ class Product extends Model
         return $this->belongsToMany(Promotion::class)
             ->withTimestamps();
     }
+
 }

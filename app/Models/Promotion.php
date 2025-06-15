@@ -41,14 +41,4 @@ class Promotion extends Model
         return $this->belongsToMany(Product::class)
             ->withTimestamps();
     }
-
-    public function clientStatuses()
-    {
-        return $this->belongsToMany(
-            ClientStatus::class,
-            'promotion_client_status',
-            'promotion_id',
-            'client_status_id'
-        );
-    }
 }

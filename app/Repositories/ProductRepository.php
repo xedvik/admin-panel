@@ -7,6 +7,7 @@ use App\Contracts\Repositories\ProductAttributeValueRepositoryInterface;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\ProductPriceService;
 
 class ProductRepository extends BaseRepository implements ProductRepositoryInterface
 {
@@ -321,5 +322,13 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
     public function clearAttributes(int $productId): bool
     {
         return $this->attributeValueRepository->deleteByProduct($productId);
+    }
+
+    /**
+     * Обновить итоговую цену товара
+     */
+    public function updateFinalPrice(Product $product): void
+    {
+        $product->update(['final_price' => $product->final_price]);
     }
 }

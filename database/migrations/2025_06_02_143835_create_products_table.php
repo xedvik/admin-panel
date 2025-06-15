@@ -18,14 +18,14 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->text('short_description')->nullable();
             $table->string('sku')->unique(); // артикул товара
-            $table->integer('price');
+            $table->integer('price'); // базовая цена
+            $table->integer('final_price'); // итоговая цена с учетом акций
             $table->integer('compare_price')->nullable(); // цена до скдики (зачеркнутая цена)
             $table->integer('stock_quantity')->default(0); // количество товара на складе
             $table->boolean('track_quantity')->default(true); // отслеживать количество товара на складе
             $table->boolean('continue_selling_when_out_of_stock')->default(false); // продолжать продавать товар когда на складе нет
             $table->decimal('weight', 8, 2)->nullable(); // вес товара
             $table->string('weight_unit')->default('kg'); // единица измерения веса
-
 
             $table->jsonb('images')->nullable(); // массив ссылок на изображения
 
@@ -41,6 +41,8 @@ return new class extends Migration
             $table->index(['category_id', 'is_active']);
             $table->index(['is_featured', 'is_active']);
             $table->index('sku');
+            $table->index('price');
+            $table->index('final_price');
         });
     }
 

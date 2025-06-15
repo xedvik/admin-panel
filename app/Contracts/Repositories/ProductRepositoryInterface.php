@@ -126,4 +126,9 @@ interface ProductRepositoryInterface extends BaseRepositoryInterface
      * Удалить все атрибуты товара
      */
     public function clearAttributes(int $productId): bool;
+
+    /**
+     * Обновить итоговую цену товара с учетом акций
+     */
+    public function updateFinalPrice(Product $product): void;
 }

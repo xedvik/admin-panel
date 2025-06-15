@@ -29,6 +29,7 @@ class ProductFactory extends Factory
             'short_description' => $this->faker->sentence, // краткое описание товара
             'sku' => $this->faker->unique()->numerify('SKU-######'), // артикул товара
             'price' => $price, // цена товара в рублях
+            'final_price' => $this->faker->numberBetween(100, 10000), // цена товара после скидки в рублях
             'compare_price' => $comparePrice, // цена до скидки в рублях
             'stock_quantity' => $this->faker->numberBetween(0, 100), // количество товара на складе
             'track_quantity' => $this->faker->boolean(80), // отслеживать количество товара на складе
