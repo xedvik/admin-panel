@@ -5,6 +5,7 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     email_verified_at TIMESTAMP NULL,
     password VARCHAR(255) NOT NULL,
+    role VARCHAR(255) NOT NULL DEFAULT 'user',
     remember_token VARCHAR(100) NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
@@ -40,6 +41,36 @@ CREATE TABLE personal_access_tokens (
 );
 CREATE INDEX personal_access_tokens_tokenable_type_tokenable_id_index ON personal_access_tokens (tokenable_type, tokenable_id);
 
+-- Таблица статусов клиентов
+CREATE TABLE client_statuses (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    label VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+
+-- Таблица клиентов
+CREATE TABLE clients (
+    id BIGSERIAL PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    phone VARCHAR(255) NULL,
+    date_of_birth DATE NULL,
+    gender VARCHAR(255) NULL,
+    addresses JSONB NULL,
+    accepts_marketing BOOLEAN NOT NULL DEFAULT FALSE,
+    email_verified_at TIMESTAMP NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    client_status_id BIGINT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    FOREIGN KEY (client_status_id) REFERENCES client_statuses (id) ON DELETE SET NULL
+);
+CREATE INDEX clients_email_index ON clients (email);
+CREATE INDEX clients_is_active_created_at_index ON clients (is_active, created_at);
+
 -- Таблица категорий
 CREATE TABLE categories (
     id BIGSERIAL PRIMARY KEY,
@@ -59,25 +90,6 @@ CREATE TABLE categories (
 CREATE INDEX categories_is_active_sort_order_index ON categories (is_active, sort_order);
 CREATE INDEX categories_parent_id_is_active_index ON categories (parent_id, is_active);
 
--- Таблица клиентов
-CREATE TABLE clients (
-    id BIGSERIAL PRIMARY KEY,
-    first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    phone VARCHAR(255) NULL,
-    date_of_birth DATE NULL,
-    gender VARCHAR(255) NULL,
-    addresses JSONB NULL,
-    accepts_marketing BOOLEAN NOT NULL DEFAULT FALSE,
-    email_verified_at TIMESTAMP NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL
-);
-CREATE INDEX clients_email_index ON clients (email);
-CREATE INDEX clients_is_active_created_at_index ON clients (is_active, created_at);
-
 -- Таблица товаров
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
@@ -87,7 +99,7 @@ CREATE TABLE products (
     short_description TEXT NULL,
     sku VARCHAR(255) NOT NULL UNIQUE,
     price INTEGER NOT NULL,
-    compare_price INTEGER NULL,
+    final_price INTEGER NOT NULL,
     stock_quantity INTEGER NOT NULL DEFAULT 0,
     track_quantity BOOLEAN NOT NULL DEFAULT TRUE,
     continue_selling_when_out_of_stock BOOLEAN NOT NULL DEFAULT FALSE,
@@ -108,6 +120,8 @@ CREATE INDEX products_is_active_published_at_index ON products (is_active, publi
 CREATE INDEX products_category_id_is_active_index ON products (category_id, is_active);
 CREATE INDEX products_is_featured_is_active_index ON products (is_featured, is_active);
 CREATE INDEX products_sku_index ON products (sku);
+CREATE INDEX products_price_index ON products (price);
+CREATE INDEX products_final_price_index ON products (final_price);
 
 -- Таблица заказов
 CREATE TABLE orders (
@@ -151,41 +165,11 @@ CREATE TABLE order_items (
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,
     FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+    FOREIGN KEY (product_sku) REFERENCES products (sku) ON DELETE CASCADE
 );
 CREATE INDEX order_items_order_id_product_id_index ON order_items (order_id, product_id);
 CREATE INDEX order_items_product_id_index ON order_items (product_id);
-
--- Таблица атрибутов товаров
-CREATE TABLE product_attributes (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) NOT NULL UNIQUE,
-    type VARCHAR(255) NOT NULL DEFAULT 'text',
-    description TEXT NULL,
-    options JSONB NULL,
-    is_required BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    is_filterable BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL
-);
-CREATE INDEX product_attributes_is_active_sort_order_index ON product_attributes (is_active, sort_order);
-
--- Таблица значений атрибутов товаров
-CREATE TABLE product_attribute_values (
-    id BIGSERIAL PRIMARY KEY,
-    product_id BIGINT NOT NULL,
-    attribute_id BIGINT NOT NULL,
-    value TEXT NOT NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
-    FOREIGN KEY (attribute_id) REFERENCES product_attributes (id) ON DELETE CASCADE,
-    UNIQUE(product_id, attribute_id)
-);
-CREATE INDEX product_attribute_values_attribute_id_index ON product_attribute_values (attribute_id);
 
 -- Таблица адресов клиентов
 CREATE TABLE client_addresses (
@@ -217,10 +201,79 @@ CREATE TABLE settings (
     key VARCHAR(255) NOT NULL UNIQUE,
     value TEXT NULL,
     type VARCHAR(255) NOT NULL DEFAULT 'string',
-    group VARCHAR(255) NULL,
+    "group" VARCHAR(255) NULL,
     label VARCHAR(255) NULL,
     description VARCHAR(255) NULL,
     is_public BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
 );
+
+-- Таблица cities
+CREATE TABLE cities (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    region VARCHAR(255) NOT NULL,
+    latitude DECIMAL(10,7) NULL,
+    longitude DECIMAL(10,7) NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+
+-- Таблица акций
+CREATE TABLE promotions (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    start_date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP NOT NULL,
+    discount_type VARCHAR(255) NOT NULL,
+    discount_value INTEGER NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+CREATE INDEX promotions_is_active_start_date_end_date_index ON promotions (is_active, start_date, end_date);
+
+-- Таблица связки товаров и акций
+CREATE TABLE product_promotion (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT NOT NULL,
+    promotion_id BIGINT NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+    FOREIGN KEY (promotion_id) REFERENCES promotions (id) ON DELETE CASCADE,
+    UNIQUE (product_id, promotion_id)
+);
+
+-- Таблица атрибутов товаров
+CREATE TABLE product_attributes (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    type VARCHAR(255) NOT NULL DEFAULT 'text',
+    description TEXT NULL,
+    options JSONB NULL,
+    is_required BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_filterable BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+CREATE INDEX product_attributes_is_active_sort_order_index ON product_attributes (is_active, sort_order);
+
+-- Таблица значений атрибутов товаров
+CREATE TABLE product_attribute_values (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT NOT NULL,
+    attribute_id BIGINT NOT NULL,
+    value TEXT NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+    FOREIGN KEY (attribute_id) REFERENCES product_attributes (id) ON DELETE CASCADE,
+    UNIQUE (product_id, attribute_id)
+);
+CREATE INDEX product_attribute_values_attribute_id_index ON product_attribute_values (attribute_id);
