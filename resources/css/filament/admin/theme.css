@@ -5,16 +5,13 @@
 @tailwind utilities;
 @tailwind variants;
 
-.filament-tables-container {
-    max-width: 100% !important;
-    width: 100% !important;
+
+/* Убираем ограничение по ширине для основного контейнера */
+.fi-main, .fi-resource-main, .fi-simple-main {
+    @apply w-full max-w-none px-6;
 }
 
-.filament-tables-table-container {
-    max-width: 100% !important;
-    width: 100% !important;
-}
-
-.filament-tables-table {
-    width: 100% !important;
+/* Если таблица всё равно сжимается — расширяем контейнер таблицы */
+.fi-ta-table-container {
+    @apply w-full max-w-none;
 }
