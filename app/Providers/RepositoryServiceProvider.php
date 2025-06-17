@@ -16,6 +16,7 @@ use App\Contracts\Repositories\OrderItemRepositoryInterface;
 use App\Contracts\Repositories\SettingRepositoryInterface;
 use App\Contracts\Repositories\ProductAttributeRepositoryInterface;
 use App\Contracts\Repositories\ProductAttributeValueRepositoryInterface;
+use App\Contracts\Repositories\CityRepositoryInterface;
 
 // Реализации
 use App\Repositories\UserRepository;
@@ -30,6 +31,7 @@ use App\Repositories\ProductAttributeRepository;
 use App\Repositories\ProductAttributeValueRepository;
 use App\Repositories\PromotionRepository;
 use App\Contracts\Repositories\PromotionRepositoryInterface;
+use App\Repositories\CityRepository;
 
 // Модели
 use App\Models\User;
@@ -42,6 +44,7 @@ use App\Models\OrderItem;
 use App\Models\Setting;
 use App\Models\ProductAttribute;
 use App\Models\ProductAttributeValue;
+use App\Models\City;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -98,6 +101,10 @@ class RepositoryServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(PromotionRepositoryInterface::class, PromotionRepository::class);
+
+        $this->app->bind(CityRepositoryInterface::class, function ($app) {
+            return new CityRepository($app->make(City::class));
+        });
     }
 
     /**

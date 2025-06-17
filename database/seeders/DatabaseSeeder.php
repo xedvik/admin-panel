@@ -41,6 +41,9 @@ class DatabaseSeeder extends Seeder
         // Создаем заказы для клиентов
         $this->seederService->createOrdersForClients($clients);
 
+        // Сидим города РФ
+        $this->call(RussianCitiesSeeder::class);
+
         // Выводим статистику
         $stats = $this->seederService->getSeederStats();
         $this->command->info('База данных заполнена тестовыми данными!');

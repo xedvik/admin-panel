@@ -8,6 +8,7 @@ use Filament\Forms\Form;
 use Filament\Actions\Action;
 use App\Contracts\Repositories\SettingRepositoryInterface;
 use Filament\Notifications\Notification;
+use App\Contracts\Repositories\CityRepositoryInterface;
 
 class SettingsPage extends Page implements Forms\Contracts\HasForms
 {
@@ -21,6 +22,11 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
 
     public ?array $data = [];
 
+    public function __construct()
+    {
+
+    }
+
     public function mount(): void
     {
         $this->fillFormWithSettings();
@@ -28,31 +34,29 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
 
     protected function fillFormWithSettings(): void
     {
-        $settingRepository = app(SettingRepositoryInterface::class);
-
         // Загружаем только статичные настройки
         $settings = [
             // Основные
-            'site_name' => $settingRepository->getValue('site_name', ''),
-            'site_description' => $settingRepository->getValue('site_description', ''),
-            'contact_email' => $settingRepository->getValue('contact_email', ''),
-            'contact_phone' => $settingRepository->getValue('contact_phone', ''),
-            'site_logo' => $settingRepository->getValue('site_logo', ''),
+            'site_name' => $this->getSettingRepository()->getValue('site_name', ''),
+            'site_description' => $this->getSettingRepository()->getValue('site_description', ''),
+            'contact_email' => $this->getSettingRepository()->getValue('contact_email', ''),
+            'contact_phone' => $this->getSettingRepository()->getValue('contact_phone', ''),
+            'site_logo' => $this->getSettingRepository()->getValue('site_logo', ''),
 
             // Доставка
-            'free_shipping_threshold' => $settingRepository->getValue('free_shipping_threshold', null),
-            'shipping_cost' => $settingRepository->getValue('shipping_cost', 0),
-            'delivery_time' => $settingRepository->getValue('delivery_time', ''),
+            'free_shipping_threshold' => $this->getSettingRepository()->getValue('free_shipping_threshold', null),
+            'shipping_cost' => $this->getSettingRepository()->getValue('shipping_cost', 0),
+            'delivery_time' => $this->getSettingRepository()->getValue('delivery_time', ''),
 
             // Магазин
-            'store_status' => $settingRepository->getValue('store_status', true),
-            'maintenance_message' => $settingRepository->getValue('maintenance_message', ''),
-            'min_order_amount' => $settingRepository->getValue('min_order_amount', 0),
+            'store_status' => $this->getSettingRepository()->getValue('store_status', true),
+            'maintenance_message' => $this->getSettingRepository()->getValue('maintenance_message', ''),
+            'min_order_amount' => $this->getSettingRepository()->getValue('min_order_amount', 0),
 
             // SEO
-            'meta_keywords' => $settingRepository->getValue('meta_keywords', ''),
-            'google_analytics_id' => $settingRepository->getValue('google_analytics_id', ''),
-            'yandex_metrika_id' => $settingRepository->getValue('yandex_metrika_id', ''),
+            'meta_keywords' => $this->getSettingRepository()->getValue('meta_keywords', ''),
+            'google_analytics_id' => $this->getSettingRepository()->getValue('google_analytics_id', ''),
+            'yandex_metrika_id' => $this->getSettingRepository()->getValue('yandex_metrika_id', ''),
 
             // Соцсети
             'social_vk' => '',
@@ -61,22 +65,29 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
             'social_youtube' => '',
 
             // Уведомления
-            'admin_email_notifications' => $settingRepository->getValue('admin_email_notifications', true),
-            'notification_emails' => $settingRepository->getValue('notification_emails', ''),
+            'admin_email_notifications' => $this->getSettingRepository()->getValue('admin_email_notifications', true),
+            'notification_emails' => $this->getSettingRepository()->getValue('notification_emails', ''),
 
             // Валюта
-            'currency_symbol' => $settingRepository->getValue('currency_symbol', '₽'),
-            'currency_code' => $settingRepository->getValue('currency_code', 'RUB'),
+            'currency_symbol' => $this->getSettingRepository()->getValue('currency_symbol', '₽'),
+            'currency_code' => $this->getSettingRepository()->getValue('currency_code', 'RUB'),
+
+            // Города
+            'enabled_cities' => [],
         ];
 
         // Обрабатываем социальные сети
-        $socialLinks = $settingRepository->getValue('social_links', []);
+        $socialLinks = $this->getSettingRepository()->getValue('social_links', []);
         if (is_array($socialLinks)) {
             $settings['social_vk'] = $socialLinks['vk'] ?? '';
             $settings['social_telegram'] = $socialLinks['telegram'] ?? '';
             $settings['social_instagram'] = $socialLinks['instagram'] ?? '';
             $settings['social_youtube'] = $socialLinks['youtube'] ?? '';
         }
+
+        // enabled_cities хранится как массив объектов [{id, name}, ...]
+        $enabledCities = $this->getSettingRepository()->getValue('enabled_cities', []);
+        $settings['enabled_cities'] = array_column($enabledCities, 'id');
 
         $this->form->fill($settings);
     }
@@ -218,6 +229,17 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
                                     ->maxLength(3)
                                     ->placeholder('RUB'),
                             ]),
+
+                        Forms\Components\Tabs\Tab::make('Города')
+                            ->schema([
+                                Forms\Components\Select::make('enabled_cities')
+                                    ->label('Города, в которых работает магазин')
+                                    ->multiple()
+                                    ->searchable()
+                                    ->options(fn () => $this->getCityRepository()->getOptionsForSelect())
+                                    ->preload()
+                                    ->helperText('Выберите города, где доступен магазин'),
+                            ]),
                     ])
                     ->columnSpanFull(),
             ])
@@ -236,7 +258,6 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
     public function save(): void
     {
         try {
-            $settingRepository = app(SettingRepositoryInterface::class);
             $data = $this->form->getState();
 
             // Обрабатываем социальные сети
@@ -246,27 +267,38 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
                 'instagram' => $data['social_instagram'] ?? '',
                 'youtube' => $data['social_youtube'] ?? '',
             ];
-
-            // Удаляем социальные сети из основных данных
             unset($data['social_vk'], $data['social_telegram'], $data['social_instagram'], $data['social_youtube']);
 
             // Сохраняем только значения существующих настроек
             foreach ($data as $key => $value) {
-                $setting = $settingRepository->findByKey($key);
+                $setting = $this->getSettingRepository()->findByKey($key);
                 if ($setting) {
-                    // Обрабатываем boolean значения
                     if ($setting->type === 'boolean') {
                         $value = $value ? '1' : '0';
                     }
-                    $settingRepository->setValue($key, $value, $setting->type);
+                    $this->getSettingRepository()->setValue($key, $value, $setting->type);
                 }
             }
 
             // Сохраняем социальные сети
-            $settingRepository->setValue('social_links', $socialLinks, 'json');
+            $this->getSettingRepository()->setValue('social_links', $socialLinks, 'json');
 
-            // Очищаем кеш
-            $settingRepository->clearCache();
+            // --- Новый блок: сохраняем enabled_cities как массив объектов ---
+            $cityIds = $data['enabled_cities'] ?? [];
+            $cities = $this->getCityRepository()->getNamesByIds($cityIds);
+            $enabledCities = [];
+            foreach ($cityIds as $id) {
+                if (isset($cities[$id])) {
+                    $enabledCities[] = [
+                        'id' => $id,
+                        'name' => $cities[$id],
+                    ];
+                }
+            }
+            $this->getSettingRepository()->setValue('enabled_cities', $enabledCities, 'json');
+            // --- конец блока ---
+
+            $this->getSettingRepository()->clearCache();
 
             Notification::make()
                 ->title('Настройки сохранены')
@@ -280,5 +312,15 @@ class SettingsPage extends Page implements Forms\Contracts\HasForms
                 ->danger()
                 ->send();
         }
+    }
+
+    private function getSettingRepository(): SettingRepositoryInterface
+    {
+        return app(SettingRepositoryInterface::class);
+    }
+
+    private function getCityRepository(): CityRepositoryInterface
+    {
+        return app(CityRepositoryInterface::class);
     }
 }
