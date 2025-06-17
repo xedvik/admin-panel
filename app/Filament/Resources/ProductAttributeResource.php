@@ -22,7 +22,7 @@ class ProductAttributeResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Атрибуты товаров';
 
-    protected static ?string $navigationGroup = 'Каталог';
+    protected static ?string $navigationGroup = 'Атрибуты';
 
     protected static ?int $navigationSort = 3;
 

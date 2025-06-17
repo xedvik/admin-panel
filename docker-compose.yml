@@ -50,6 +50,17 @@ services:
             timeout: 5s
             retries: 5
 
+    node:
+        image: node:20
+        container_name: laravel_node_admin_client
+        working_dir: /var/www/html
+        command: sh -c "npm install && npm run build && tail -f /dev/null"
+        volumes:
+            - ./:/var/www/html:delegated
+            - /var/www/html/node_modules
+        tty: true
+        depends_on:
+            - app
+
 volumes:
     postgres_data:
-

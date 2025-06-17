@@ -1,0 +1,20 @@
+@import '../../../../vendor/filament/filament/resources/css/base.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@tailwind variants;
+
+.filament-tables-container {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.filament-tables-table-container {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.filament-tables-table {
+    width: 100% !important;
+}

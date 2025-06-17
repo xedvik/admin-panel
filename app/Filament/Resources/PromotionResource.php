@@ -22,7 +22,7 @@ class PromotionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Акции';
 
-    protected static ?string $navigationGroup = 'Каталог';
+    protected static ?string $navigationGroup = 'Акции и маркетинг';
 
     protected static ?int $navigationSort = 4;
 
